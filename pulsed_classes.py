@@ -506,7 +506,7 @@ class Spectrum(Base):
         self.name = "Spectrum"
 
         self.PARAM_METADATA = {
-            "smu_channel": ("SMU Channel", int, None),  # Typically fixed per setup
+            "smu_channel1": ("SMU Channel", int, None),  # Typically fixed per setup
             "source_func": ("Source Function", str, [("Voltage(V)", "volt"), ("Current(mA)", "curr")]),
             "source_shape": ("Source Shape", str, [("DC", "dc"), ("Pulse", "puls")]),
             "source_mode": ("Source Mode", str, [("Fixed", "fix"), ("Sweep", "swe"), ("List", "list")]),
