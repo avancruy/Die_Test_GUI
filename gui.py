@@ -9,7 +9,9 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 import matplotlib
 from utils import *
 import time
-
+"""
+Ari Van Cruyningen, Matthew Manjaly
+"""
 matplotlib.use('TkAgg')  # Use TkAgg backend for tkinter integration
 
 import collections.abc
