@@ -29,26 +29,6 @@ class Base:
         self.param_vars = {}
         self.sync_in_progress = False
 
-        self.PARAM_METADATA = {
-            "smu_channel": ("SMU Channel", int, None),  # Typically fixed per setup
-            "source_func": ("Source Function", str, [("Voltage(V)", "volt"), ("Current(mA)", "curr")]),
-            "source_shape": ("Source Shape", str, [("DC", "dc"), ("Pulse", "puls")]),
-            "source_mode": ("Source Mode", str, [("Fixed", "fix"), ("Sweep", "swe"), ("List", "list")]),
-            "start": ("Start Value", float, None),
-            "stop": ("Stop Value", float, None),
-            "num_points": ("Number of Points", int, None),
-            "initval": ("Initial/Base Value", float, None),
-            "pulse_delay": ("Pulse Delay (s)", float, None),
-            "pulse_width": ("Pulse Width (s)", float, None),
-            "sense_func": ("Sense Function", str, [("Current(mA)", "curr"), ("Voltage(V)", "volt")]),
-            "sense_range": ("Sense Range", float, None),
-            "aperture": ("Aperture Time (s)", float, None),
-            "protection": ("Protection/Compliance Level", float, None),
-            "trigger_period": ("Trigger Period (s)", float, None),
-            "trigger_transition_delay": ("Trigger Transition Delay (s)", float, None),
-            "trigger_acquisition_delay": ("Trigger Acquisition Delay (s)", float, None)
-        }
-
         self.SYNCHRONIZED_PARAMS = {
             "num_points", "trigger_period", "pulse_width",
             "trigger_transition_delay", "trigger_acquisition_delay"
@@ -63,8 +43,6 @@ class Base:
 
     def setup_tab(self, parent):
         # Create main columns container
-        print(self.name)
-        print(self.param_sets)
         columns_container = tk.Frame(parent, bg='white')
         columns_container.pack(expand=True, fill="both")
 
@@ -407,6 +385,26 @@ class EAM(Base):
 
         self.name = "EAM"
 
+        self.PARAM_METADATA = {
+            "smu_channel": ("SMU Channel", int, None),  # Typically fixed per setup
+            "source_func": ("Source Function", str, [("Voltage(V)", "volt"), ("Current(mA)", "curr")]),
+            "source_shape": ("Source Shape", str, [("DC", "dc"), ("Pulse", "puls")]),
+            "source_mode": ("Source Mode", str, [("Fixed", "fix"), ("Sweep", "swe"), ("List", "list")]),
+            "start": ("Start Value", float, None),
+            "stop": ("Stop Value", float, None),
+            "num_points": ("Number of Points", int, None),
+            "initval": ("Initial/Base Value", float, None),
+            "pulse_delay": ("Pulse Delay (s)", float, None),
+            "pulse_width": ("Pulse Width (s)", float, None),
+            "sense_func": ("Sense Function", str, [("Current(mA)", "curr"), ("Voltage(V)", "volt")]),
+            "sense_range": ("Sense Range", float, None),
+            "aperture": ("Aperture Time (s)", float, None),
+            "protection": ("Protection/Compliance Level", float, None),
+            "trigger_period": ("Trigger Period (s)", float, None),
+            "trigger_transition_delay": ("Trigger Transition Delay (s)", float, None),
+            "trigger_acquisition_delay": ("Trigger Acquisition Delay (s)", float, None)
+        }
+
         # Default parameters - these will be updated by the GUI
         self.params_photodetector = {  # SMU1 chan1
             "smu_channel": 1, "source_func": "volt", "source_shape": "dc", "source_mode": "swe",
@@ -446,6 +444,27 @@ class LIV(Base):
         super().__init__(smu_resources)
 
         self.name = "LIV"
+
+        self.PARAM_METADATA = {
+            "smu_channel": ("SMU Channel", int, None),  # Typically fixed per setup
+            "source_func": ("Source Function", str, [("Voltage(V)", "volt"), ("Current(mA)", "curr")]),
+            "source_shape": ("Source Shape", str, [("DC", "dc"), ("Pulse", "puls")]),
+            "source_mode": ("Source Mode", str, [("Fixed", "fix"), ("Sweep", "swe"), ("List", "list")]),
+            "start": ("Start Value", float, None),
+            "stop": ("Stop Value", float, None),
+            "num_points": ("Number of Points", int, None),
+            "initval": ("Initial/Base Value", float, None),
+            "pulse_delay": ("Pulse Delay (s)", float, None),
+            "pulse_width": ("Pulse Width (s)", float, None),
+            "sense_func": ("Sense Function", str, [("Current(mA)", "curr"), ("Voltage(V)", "volt")]),
+            "sense_range": ("Sense Range", float, None),
+            "aperture": ("Aperture Time (s)", float, None),
+            "protection": ("Protection/Compliance Level", float, None),
+            "trigger_period": ("Trigger Period (s)", float, None),
+            "trigger_transition_delay": ("Trigger Transition Delay (s)", float, None),
+            "trigger_acquisition_delay": ("Trigger Acquisition Delay (s)", float, None)
+        }
+
         # Default parameters - these will be updated by the GUI
         self.params_photodetector = {  # SMU1 chan1
             "smu_channel": 1, "source_func": "volt", "source_shape": "dc", "source_mode": "swe",
