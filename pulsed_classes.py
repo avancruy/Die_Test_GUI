@@ -7,16 +7,24 @@ import time
 
 class Base:
     def __init__(self, smu_resources):
-        print('Pulsed EAM Test Class Initialized')
+        print('Base Test Class Initialized')
         self.smu_resources1_addr = smu_resources['smu1']
         self.smu_resources2_addr = smu_resources['smu2']
         self.smu1 = None
         self.smu2 = None
         self.base_path_config = "C:/Users/labaccount.ELPHIC/Documents/TX03_submount_xpt/"
 
+        self.name = "Base"
         self.params_photodetector = {}
         self.params_laser = {}
         self.params_eam = {}
+        self.params_spectrum = {}
+
+        self.param_sets = [
+            ("Photodetector (SMU1 Ch1)", self.params_photodetector, '#e8f4fd'),
+            ("Laser (SMU1 Ch2)", self.params_laser, '#fff2e8'),
+            ("EAM (SMU2 Ch1)", self.params_eam, '#f0f8e8')
+        ]
 
         self.param_vars = {}
         self.sync_in_progress = False
@@ -53,19 +61,15 @@ class Base:
 
         self.base_path_config = "C:/Users/labaccount.ELPHIC/Documents/TX03_submount_xpt/"
 
-    def setup(self, parent):
+    def setup_tab(self, parent):
         # Create main columns container
+        print(self.name)
+        print(self.param_sets)
         columns_container = tk.Frame(parent, bg='white')
         columns_container.pack(expand=True, fill="both")
 
-        param_sets = [
-            ("Photodetector (SMU1 Ch1)", self.params_photodetector, '#e8f4fd'),
-            ("Laser (SMU1 Ch2)", self.params_laser, '#fff2e8'),
-            ("EAM (SMU2 Ch1)", self.params_eam, '#f0f8e8')
-        ]
-
         # Create three columns with individual scrollbars
-        for i, (name, params_dict, bg_color) in enumerate(param_sets):
+        for i, (name, params_dict, bg_color) in enumerate(self.param_sets):
             # Create column frame
             column_frame = tk.Frame(columns_container, bg=bg_color, relief='solid', bd=1)
             column_frame.grid(row=0, column=i, padx=5, pady=5, sticky='nsew')
@@ -401,6 +405,8 @@ class EAM(Base):
     def __init__(self, smu_resources):
         super().__init__(smu_resources)
 
+        self.name = "EAM"
+
         # Default parameters - these will be updated by the GUI
         self.params_photodetector = {  # SMU1 chan1
             "smu_channel": 1, "source_func": "volt", "source_shape": "dc", "source_mode": "swe",
@@ -421,7 +427,7 @@ class EAM(Base):
         }
 
         self.params_eam = {  # SMU2 chan1
-            "smu_channel": 1, "source_func": "volt", "source_shape": "dc", "source_mode": "fix",
+            "smu_channel": 1, "source_func": "volt", "source_shape": "dc", "source_mode": "swe",
             "start": -2.5833, "stop": 0, "num_points": 32, "initval": -2.5833,  # Updated from 0.0 to -1.0
             "pulse_delay": 0.5e-3, "pulse_width": 200.0e-3,  # 50% duty cycle
             "sense_func": "curr", "sense_range": 100, "aperture": 5e-3,  # Updated aperture from 0.5e-3 to 5e-3
@@ -429,10 +435,17 @@ class EAM(Base):
             "trigger_transition_delay": 1.5e-3, "trigger_acquisition_delay": 2.9e-3
         }
 
+        self.param_sets = [
+            ("Photodetector (SMU1 Ch1)", self.params_photodetector, '#e8f4fd'),
+            ("Laser (SMU1 Ch2)", self.params_laser, '#fff2e8'),
+            ("EAM (SMU2 Ch1)", self.params_eam, '#f0f8e8')
+        ]
+
 class LIV(Base):
     def __init__(self, smu_resources):
         super().__init__(smu_resources)
 
+        self.name = "LIV"
         # Default parameters - these will be updated by the GUI
         self.params_photodetector = {  # SMU1 chan1
             "smu_channel": 1, "source_func": "volt", "source_shape": "dc", "source_mode": "swe",
@@ -460,3 +473,41 @@ class LIV(Base):
             "protection": 80, "trigger_period": 400e-3,  # 400ms period
             "trigger_transition_delay": 1.5e-3, "trigger_acquisition_delay": 2.9e-3
         }
+
+        self.param_sets = [
+            ("Photodetector (SMU1 Ch1)", self.params_photodetector, '#e8f4fd'),
+            ("Laser (SMU1 Ch2)", self.params_laser, '#fff2e8'),
+            ("EAM (SMU2 Ch1)", self.params_eam, '#f0f8e8')
+        ]
+
+class Spectrum(Base):
+    def __init__(self, smu_resources):
+        super().__init__(smu_resources)
+
+        self.name = "Spectrum"
+
+        self.PARAM_METADATA = {
+            "smu_channel": ("SMU Channel", int, None),  # Typically fixed per setup
+            "source_func": ("Source Function", str, [("Voltage(V)", "volt"), ("Current(mA)", "curr")]),
+            "source_shape": ("Source Shape", str, [("DC", "dc"), ("Pulse", "puls")]),
+            "source_mode": ("Source Mode", str, [("Fixed", "fix"), ("Sweep", "swe"), ("List", "list")]),
+            "start": ("Start Value", float, None),
+            "stop": ("Stop Value", float, None),
+            "num_points": ("Number of Points", int, None),
+            "initval": ("Initial/Base Value", float, None),
+            "centre": ("Centre", float, None),
+            "span": ("Span", float, None),
+            "res": ("Resolution", float, None),
+            "sens": ("Sensitivity", str, None),
+            "avg": ("Average", float, None),
+            "ref_val": ("Reference Value", float, None)
+        }
+        self.params_spectrum = {
+            "smu_channel": 1, "source_func": "volt", "source_shape": "dc", "source_mode": "swe",
+            "start": 0, "stop": 0, "num_points": 21, "initval": 0,
+            "centre": 1310, "span": 10, "res": 0.02, "sens": 'High1', "avg": 0, "ref_val": 0
+        }
+
+        self.param_sets = [
+            ("Spectrum", self.params_spectrum, '#e8f4fd'),
+        ]

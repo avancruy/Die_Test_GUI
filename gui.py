@@ -7,10 +7,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import matplotlib
-#from eam import EAM
-#from liv import LIV
-from pulsed_classes import LIV, EAM
 from utils import *
+import time
 
 matplotlib.use('TkAgg')  # Use TkAgg backend for tkinter integration
 
@@ -19,7 +17,7 @@ import collections.abc
 class PulsedGuiApp:
     def __init__(self, root):
         self.root = root
-        self.root.title('Pulsed LIV - EAM Control with Real-time Graphing')
+        self.root.title('LIV/EAM/Spectrum Testing with Real-time Graphing')
         self.root.configure(bg='#f5f5f5')
 
         # Set minimum window size - even wider to accommodate graph
@@ -29,9 +27,10 @@ class PulsedGuiApp:
             'smu1': 'TCPIP0::10.20.0.231::hislip0::INSTR',  # Replace with actual VISA address
             'smu2': 'TCPIP0::10.20.0.230::inst0::INSTR'  # Replace with actual VISA address
         }
-        self.test_controller = PulsedLivEamTest(smu_resources)
         self.liv_controller = LIV(smu_resources)
         self.eam_controller = EAM(smu_resources)
+        self.spectrum_controller = Spectrum(smu_resources)
+        self.curr_controller = self.liv_controller
         #self.param_vars = {}  # To store Tkinter variables for parameters
         self.sync_in_progress = False  # Flag to prevent infinite sync loops
 
@@ -110,7 +109,7 @@ class PulsedGuiApp:
         # Data Path (shorter)
         tk.Label(control_grid, text="Path:", font=('Arial', 9, 'bold')).grid(row=0, column=4, padx=(0, 5), pady=2,
                                                                              sticky=tk.W)
-        self.path_var = tk.StringVar(value=self.test_controller.base_path_config)
+        self.path_var = tk.StringVar(value=self.curr_controller.base_path_config)
         path_entry = ttk.Entry(control_grid, textvariable=self.path_var, width=25)
         path_entry.grid(row=0, column=5, padx=(0, 5), pady=2, sticky=tk.EW)
         browse_button = ttk.Button(control_grid, text="...", command=self.browse_path, width=3)
@@ -128,7 +127,7 @@ class PulsedGuiApp:
         control_grid.columnconfigure(5, weight=2)
 
         self.path_var.trace_add("write",
-                                lambda *args: setattr(self.test_controller, 'base_path_config',
+                                lambda *args: setattr(self.curr_controller, 'base_path_config',
                                                       self.path_var.get()))
 
         # --- Compact Status Display ---
@@ -149,15 +148,16 @@ class PulsedGuiApp:
 
         controller_sets = [
             ("LIV", self.liv_controller),
-            ("EAM", self.eam_controller)
+            ("EAM", self.eam_controller),
+            ("Spectrum", self.spectrum_controller)
         ]
 
         for name, controller in controller_sets:
-            tab = ttk.Frame(self.notebook, padding="10")
+            tab = ttk.Frame(self.notebook, padding="50")
             self.notebook.add(tab, text=name)
             #self.create_param_entries(tab, params_dict, name)  # Pass name for unique var keys
             #self.create_column_layout(tab)
-            controller.setup(tab)
+            controller.setup_tab(tab)
 
     def setup_graph_panel(self, main_panel):
         # Graph panel title
@@ -231,6 +231,13 @@ class PulsedGuiApp:
             self.current_excel_file = file_path
 
     def plot_excel_data(self):
+        # Plot LIV or EAM data
+        if (self.notebook.index('current') == 0 or self.notebook.index('current') == 1):
+            self.plot_liveam_data()
+        else:
+            self.plot_spectrum_data()
+
+    def plot_liveam_data(self):
         """Plot data from the selected Excel file"""
         excel_file_path = self.excel_path_var.get()
 
@@ -323,6 +330,10 @@ class PulsedGuiApp:
 
         self.update_status(f"📊 Plotted: {os.path.basename(excel_file_path)}", "#2e8b57")
 
+    def plot_spectrum_data(self):
+        #to be added
+        pass
+
     def clear_plot(self):
         """Clear the current plot"""
         self.ax.clear()
@@ -365,21 +376,19 @@ class PulsedGuiApp:
         self.status_label.configure(fg=color)
 
     def run_test_threaded(self):
+        self.current_tab = self.notebook.index('current')
         self.run_button.config(state=tk.DISABLED, text="⏳ Running...", bg='#ff9800')
-
-        print("Tab: ", self.notebook.index('current'))
-        tab_num = self.notebook.index('current')
-
         test_type = ""
-        if (tab_num == 0):
+        if (self.current_tab == 0):
             test_type = "LIV"
-        elif (tab_num == 1):
+            self.curr_controller = self.liv_controller
+        elif (self.current_tab == 1):
             test_type = "EAM"
+            self.curr_controller = self.eam_controller
         else:
             pass
 
-        self.update_status("Running {test_type} test...", "#4682b4")
-
+        self.update_status(f"Running {self.curr_controller.name} test...", "#4682b4")
         device_id = self.device_entry.get()
         if device_id == "e.g., W0xx_GF_0102" or device_id == "W0xx_GF_0102":  # Accommodate placeholder
             device_id = ""
@@ -399,11 +408,12 @@ class PulsedGuiApp:
             temperature = str(temp_val)
 
         timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
-        print(f"Running {test_type} test for: '{device_id}' at {timestamp} with Temp: '{temperature}°C'")
-        print(f"Photodetector Params: {self.test_controller.params_photodetector}")
-        print(f"Laser Params: {self.test_controller.params_laser}")
-        print(f"EAM Params: {self.test_controller.params_eam}")
-        print(f"Data Path: {self.test_controller.base_path_config}")
+        print(f"Running {self.curr_controller.name} test for: '{device_id}' at {timestamp} with Temp: '{temperature}°C'")
+        if self.curr_controller.name == "LIV" or self.curr_controller.name == "EAM":
+            print(f"Photodetector Params: {self.curr_controller.params_photodetector}")
+            print(f"Laser Params: {self.curr_controller.params_laser}")
+            print(f"EAM Params: {self.curr_controller.params_eam}")
+        print(f"Data Path: {self.curr_controller.base_path_config}")
 
         # Run the test in a separate thread
         test_thread = threading.Thread(target=self.execute_test_and_reenable_button,
@@ -413,7 +423,7 @@ class PulsedGuiApp:
 
     def execute_test_and_reenable_button(self, device_id, temperature, timestamp):
         try:
-            self.test_controller.run_test(device_id=device_id, temperature=temperature, timestamp=timestamp)
+            self.curr_controller.run_test(device_id=device_id, temperature=temperature, timestamp=timestamp)
             print("Test execution finished.")
             self.root.after(0, lambda: self.update_status("Test completed successfully ✓", "#2e8b57"))
 
@@ -439,13 +449,13 @@ class PulsedGuiApp:
     def on_closing(self):
         if messagebox.askokcancel("Quit", "Do you want to quit? This will close SMU connections if active."):
             print("Closing application, ensuring SMUs are closed...")
-            self.test_controller.close_smus()
+            self.curr_controller.close_smus()
             self.root.destroy()
 
 # main----------------------------------------------------
 
 try:
-    from pulsed_liv_eam_test_class import PulsedLivEamTest
+    from pulsed_classes import LIV, EAM, Spectrum
 except ImportError:
     print("Warning: 'pulsed_liv_eam_test_class.py' not found. Using a dummy class for GUI demonstration.")
 
