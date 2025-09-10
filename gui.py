@@ -388,7 +388,8 @@ class PulsedGuiApp:
             test_type = "EAM"
             self.curr_controller = self.eam_controller
         else:
-            pass
+            test_type = "Spectrum"
+            self.curr_controller = self.spectrum_controller
 
         self.update_status(f"Running {self.curr_controller.name} test...", "#4682b4")
         device_id = self.device_entry.get()

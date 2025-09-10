@@ -276,6 +276,8 @@ class Base:
                 print("Running EAM Test (EAM sweep)")
                 num_measurement_points = self.params_eam['num_points']
                 active_trigger_period = self.params_eam['trigger_period']
+            elif test_type == "Spectrum":
+                print("Running Spectrum Test")
             else:
                 print("Warning: Neither Laser nor EAM is in sweep mode. Defaulting to EAM num_points for timing.")
                 test_checker = False
@@ -519,14 +521,19 @@ class Spectrum(Base):
             "res": ("Resolution", float, None),
             "sens": ("Sensitivity", str, None),
             "avg": ("Average", float, None),
-            "ref_val": ("Reference Level", float, None)
+            "ref_val": ("Reference Level", float, None),
+
+            "OSA_addr": ("OSA Address", str, None)
         }
         self.params_spectrum = { # SMU 1 Channels 1 & 2, OSA
             "source_func1": "volt", "smu_channel1_source": -2, "smu_channel1_limit": 0.02,
             "source_func2": "Current(mA)", "smu_channel2_source": 0.08, "smu_channel2_limit": 2.5,
-            "centre": 1310, "span": 12, "res": 0.02, "sens": 'High1', "avg": 1, "ref_val": -20
+            "centre": 1310, "span": 12, "res": 0.02, "sens": 'High1', "avg": 1, "ref_val": -20,
+            "OSA_addr": "10.20.0.199"
         }
 
         self.param_sets = [
             ("Spectrum", self.params_spectrum, '#e8f4fd'),
         ]
+
+        from AQ6370Controls import AQ6370Controls
