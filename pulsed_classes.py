@@ -276,8 +276,6 @@ class Base:
                 print("Running EAM Test (EAM sweep)")
                 num_measurement_points = self.params_eam['num_points']
                 active_trigger_period = self.params_eam['trigger_period']
-            elif test_type == "Spectrum":
-                print("Running Spectrum Test")
             else:
                 print("Warning: Neither Laser nor EAM is in sweep mode. Defaulting to EAM num_points for timing.")
                 test_checker = False
@@ -536,4 +534,168 @@ class Spectrum(Base):
             ("Spectrum", self.params_spectrum, '#e8f4fd'),
         ]
 
-        from AQ6370Controls import AQ6370Controls
+    # override of run_test function to run spectrum test
+    def run_test(self, device_id="", temperature="", timestamp=""):
+
+        if not self.connect_smus():
+            print("SMU connection failed. Aborting test.")
+            return
+
+        try:
+            print("\n--- Initializing SMU1 ---")
+            self.smu1.reset()
+            print("\n--- Initializing SMU2 ---")
+            self.smu2.reset()
+            time.sleep(settle_time)
+
+            current_timestamp = timestamp or datetime.now().strftime("%Y%m%dT%H%M%S")
+            folder_path = self.base_path_config
+
+            from AQ6370Controls import AQ6370Controls
+            osa = AQ6370Controls(self.params_spectrum['OSA_addr'])
+            osaBusy = threading.Event()  # OSA Busy Event
+
+            """connect_to_osa: Retrieves inputs from Excel sheet
+                 and tries to connect to OSA
+                 Does not try to connect if OSA connection is busy"""
+            if osabusy.is_set():  # If OSA busy
+                # write_text_box(textbox, 'OSA Busy Error')
+                print("OSA Busy Error")
+                print("OSA busy. Exiting function")
+
+            osaBusy.set()  # Set event osaBusy
+            osa.setAddress(self.params_spectrum['OSA_addr'])  # connect to OSA through IP address
+
+            try:
+                # write_text_box(textbox, 'Connecting to OSA')
+                print("Connecting to OSA")
+                osa.open()  # Try to open OSA
+            except Exception as e:  # Exception
+                # write_text_box(textbox, f'Cannot Connect to OSA: error {e}')  # Print error to text box
+                print(f'Cannot Connect to OSA: error {e}')
+                # connectedlabel.config(text='Not Connected', bg='red3')  # Red label
+            else:  # Connected
+                 # connectedlabel.config(text='Connected', bg='green3')  # Set green label
+                print("Connected to OSA")
+                # write_text_box(textbox, 'Connected to OSA')  # Write connected to OSA
+            finally:
+                osaBusy.clear()  # Clear event
+
+            center = osa.setCenter(Spectrum.params_spectrum['centre'])  # '1310'
+            span = osa.setSpan(self.params_spectrum['span'])  # '10'
+            resolution = osa.setResolution(self.params_spectrum['res'])  # '0.02'
+            sensitivity = osa.setSensitivity(self.params_spectrum['sens'])  # 'High1'
+            average = osa.setAvg(self.params_spectrum['avg'])
+            reference_value = osa.setRefValue(self.params_spectrum['ref_val'])
+
+
+            print("Performing Sweep...")
+
+            osa.singleSweep()  # Perform single sweep and print peak power and peak wavelength
+            pkpow = round(osa.getPeakPower(), 3)
+            pkwl = round(osa.getPeakWavelength(), 3)
+            smsr = [round(item * 1e9, 3) if item > 0 and item < 1e-5 else item for item in osa.getSMSR()]
+            print(
+                f'Peak Power: {round(osa.getPeakPower(), 3)} dBm\nPeak Wavelength: {round(osa.getPeakWavelength(), 3)} nm\nSMSR: {[round(item * 1e9, 3) if item > 0 and item < 1e-5 else item for item in osa.getSMSR()]} dB')
+
+            osaBusy.clear()  # Clear OSA busy event
+            timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
+
+            """Saves sweep data in Excel sheet
+                Does not save sweep data if OSA is not connected or is busy
+                """
+
+            if not osa.connected:  # OSA Not Connected
+                print("OSA Not Connected Error")
+            else:
+                if osaBusy.is_set():  # OSA busy
+                    print("OSA busy. Exiting function")
+                    sys.exit()
+
+            osaBusy.set()  # Set OSA busy event
+            (xvals, yvals) = osa.getTraceVals()  # Get trace vals (xvals, yvals)
+            osaBusy.clear()  # Clear OSA busy event
+            
+            data_file_name = str(device_id) + "_" +str(temperature)+ "C" + "_" + str("80mA")
+
+            plt.show(block=False)  # Show plot window
+            csvfile_name1 = f'{data_file_name}_{timestamp}.csv'
+            csvfile_path1 = os.path.join(folder_path, csvfile_name1)
+            np.savetxt(csvfile_path1, np.transpose([xvals, yvals]), delimiter=',', header='Freq, Amplitude',
+                       comments='', fmt='%f')
+
+            smu.set_current(2, 0.08)
+            smu.output_off(1)
+            smu.output_off(2)
+
+            """
+                Opens a plot window with the OSA sweep data
+                Does not perform sweep if OSA is not connected or is busy
+                """
+            if not osa.connected:
+                print("OSA Not Connected Error")
+                sys.exit()
+            if osaBusy.is_set():  # OSA Busy
+                print("OSA busy. Exiting function")
+                sys.exit()
+            osaBusy.set()  # Set OSA busy event
+            (xvals, yvals) = osa.getTraceVals()  # Get trace vals (xvals, yvals)
+            osaBusy.clear()  # Clear OSA busy event
+            fig1, ax1 = plt.subplots()  # Set up plot window
+            ax1.plot(xvals, yvals)
+            ax1.set_xlabel('Wavelength (nm)')
+            ax1.set_ylabel('Amplitude (dBm)')
+            ax1.set_title('Amplitude vs wavelength')
+            plt.grid(True)
+            plt.show(block=False)  # Show plot window
+
+            if not osa.connected:
+                print("OSA Not Connected Error")
+                sys.exit()
+            if osaBusy.is_set():  # OSA Busy
+                print("OSA busy. Exiting function")
+                sys.exit()
+
+            osaBusy.set()  # Set OSA busy event
+            (xvals, yvals) = osa.getTraceVals()  # Get trace vals (xvals, yvals)
+            osaBusy.clear()  # Clear OSA busy event
+            fig1, ax1 = plt.subplots()  # Set up plot window
+            ax1.plot(xvals, yvals)
+            ax1.set_xlabel('Wavelength (nm)')
+            ax1.set_ylabel('Amplitude (dBm)')
+            ax1.set_title('Amplitude vs wavelength')
+            plt.grid(True)
+
+
+            plt.show(block=False)  # Show plot window
+
+            file_name = f'{data_file_name}_{timestamp}.jpg'
+            file_path = os.path.join(folder_path, file_name)
+
+            plt.show(block=False)  # Show plot window
+            csvfile_name = f'{data_file_name}_{timestamp}.csv'
+            csvfile_path = os.path.join(folder_path, csvfile_name)
+            np.savetxt(csvfile_path, np.transpose([xvals, yvals]), delimiter=',', header='Freq, Amplitude',
+                       comments='', fmt='%f')
+            list1 = [pkpow, pkwl]
+            list1.extend(smsr)
+            data_to_save_np = np.array(list1).reshape(1, -1)
+            speparamfile_name = f'{data_file_name}_pkpow_pkwl_smsr_{timestamp}.csv'
+            speparamfile_path = os.path.join(folder_path, speparamfile_name)
+            np.savetxt(speparamfile_path, data_to_save_np, delimiter=',',
+                       header='pkpow, pkwl, wl1, pow1, wl2, pow2, dwl, smsr ',
+                       comments='', fmt='%f')
+            plt.savefig(file_path)
+
+        except ConnectionError as e:
+            print(f"Connection Error during test: {e}")
+        except pyvisa.errors.VisaIOError as e:
+            print(f"A VISA communication error occurred: {e}")
+        except Exception as e:
+            print(f"An unexpected error occurred during the script execution: {e}")
+            import traceback
+            traceback.print_exc()
+
+
+
+
