@@ -506,25 +506,25 @@ class Spectrum(Base):
         self.name = "Spectrum"
 
         self.PARAM_METADATA = {
-            "smu_channel1": ("SMU Channel", int, None),  # Typically fixed per setup
-            "source_func": ("Source Function", str, [("Voltage(V)", "volt"), ("Current(mA)", "curr")]),
-            "source_shape": ("Source Shape", str, [("DC", "dc"), ("Pulse", "puls")]),
-            "source_mode": ("Source Mode", str, [("Fixed", "fix"), ("Sweep", "swe"), ("List", "list")]),
-            "start": ("Start Value", float, None),
-            "stop": ("Stop Value", float, None),
-            "num_points": ("Number of Points", int, None),
-            "initval": ("Initial/Base Value", float, None),
-            "centre": ("Centre", float, None),
+            "source_func1": ("Channel 1 Mode", str, [("Voltage(V)", "volt"), ("Current(mA)", "curr")]),
+            "smu_channel1_source": ("Channel 1 Source (A)", int, None),
+            "smu_channel1_limit": ("Channel 1 limit", int, None),
+
+            "source_func2": ("Channel 2 Mode", str, [("Voltage(V)", "volt"), ("Current(mA)", "curr")]),
+            "smu_channel2_source": ("Channel 2 Source (V)", int, None),
+            "smu_channel2_limit": ("Channel 2 limit", int, None),
+
+            "centre": ("Centre", float, None), #center x-value (wavelength) of plot
             "span": ("Span", float, None),
             "res": ("Resolution", float, None),
             "sens": ("Sensitivity", str, None),
             "avg": ("Average", float, None),
-            "ref_val": ("Reference Value", float, None)
+            "ref_val": ("Reference Level", float, None)
         }
-        self.params_spectrum = {
-            "smu_channel": 1, "source_func": "volt", "source_shape": "dc", "source_mode": "swe",
-            "start": 0, "stop": 0, "num_points": 21, "initval": 0,
-            "centre": 1310, "span": 10, "res": 0.02, "sens": 'High1', "avg": 0, "ref_val": 0
+        self.params_spectrum = { # SMU 1 Channels 1 & 2, OSA
+            "source_func1": "volt", "smu_channel1_source": -2, "smu_channel1_limit": 0.02,
+            "source_func2": "Current(mA)", "smu_channel2_source": 0.08, "smu_channel2_limit": 2.5,
+            "centre": 1310, "span": 12, "res": 0.02, "sens": 'High1', "avg": 1, "ref_val": -20
         }
 
         self.param_sets = [
