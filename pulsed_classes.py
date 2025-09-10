@@ -2,8 +2,14 @@ import tkinter as tk
 from tkinter import ttk
 import pyvisa
 from utils import *
-from datetime import datetime
 import time
+import threading
+import matplotlib.pyplot as plt
+from datetime import datetime
+import os
+import numpy as np
+import sys
+
 
 class Base:
     def __init__(self, smu_resources):
@@ -507,12 +513,12 @@ class Spectrum(Base):
 
         self.PARAM_METADATA = {
             "source_func1": ("Channel 1 Mode", str, [("Voltage(V)", "volt"), ("Current(mA)", "curr")]),
-            "smu_channel1_source": ("Channel 1 Source (A)", int, None),
-            "smu_channel1_limit": ("Channel 1 limit", int, None),
+            "smu_channel1_source": ("Channel 1 Source (A)", float, None),
+            "smu_channel1_limit": ("Channel 1 limit", float, None),
 
             "source_func2": ("Channel 2 Mode", str, [("Voltage(V)", "volt"), ("Current(mA)", "curr")]),
-            "smu_channel2_source": ("Channel 2 Source (V)", int, None),
-            "smu_channel2_limit": ("Channel 2 limit", int, None),
+            "smu_channel2_source": ("Channel 2 Source (V)", float, None),
+            "smu_channel2_limit": ("Channel 2 limit", float, None),
 
             "centre": ("Centre", float, None), #center x-value (wavelength) of plot
             "span": ("Span", float, None),
@@ -521,13 +527,14 @@ class Spectrum(Base):
             "avg": ("Average", float, None),
             "ref_val": ("Reference Level", float, None),
 
-            "OSA_addr": ("OSA Address", str, None)
+            "OSA_addr": ("OSA Address", str, None),
+            "smu_ip_addr": ("SMU IP Address", str, None)
         }
         self.params_spectrum = { # SMU 1 Channels 1 & 2, OSA
             "source_func1": "volt", "smu_channel1_source": -2, "smu_channel1_limit": 0.02,
             "source_func2": "Current(mA)", "smu_channel2_source": 0.08, "smu_channel2_limit": 2.5,
             "centre": 1310, "span": 12, "res": 0.02, "sens": 'High1', "avg": 1, "ref_val": -20,
-            "OSA_addr": "10.20.0.199"
+            "OSA_addr": "10.20.0.199", smu_ip_addr: "10.20.0.38"
         }
 
         self.param_sets = [
@@ -537,164 +544,183 @@ class Spectrum(Base):
     # override of run_test function to run spectrum test
     def run_test(self, device_id="", temperature="", timestamp=""):
 
-        if not self.connect_smus():
-            print("SMU connection failed. Aborting test.")
-            return
+        #connecting to SMU1 only (both channels) for spectrum test
+        from KeysightB2912A import KeysightB2912A
+        smu_ip_addr = "10.20.0.38"
+
+        smu = KeysightB2912A('TCPIP0::10.20.0.231::hislip0::INSTR')  # Replace with your actual IP
+        smu.get_idn()
+
+        smu.set_mode(1, self.params_spectrum['source_func1'])
+        if ch1_mode_input == 'curr':
+            smu.set_current(1, self.params_spectrum['smu_channel1_source'])
+        else:
+            smu.set_voltage(1, self.params_spectrum['smu_channel1_source'])
+        # smu.set_current_limit(data[1][2])
+        smu.set_autorange(1)
+        smu.output_on(1)
+        if self.params_spectrum['smu_channel1_source'] == 'curr':
+            out1 = smu.read_voltage(1)
+        else:
+            out1 = smu.read_current(1)
+        print(f"Applied {self.params_spectrum['source_func1']}: {self.params_spectrum[smu_channel1_source]}, Measured: {out1}V")
+
+        smu.set_mode(2, self.params_spectrum['source_func2'])
+        if self.params_spectrum['source_func2'] == 'curr':
+            smu.set_current(2, self.params_spectrum['smu_channel2_source'])
+        else:
+            smu.set_voltage(2, self.params_spectrum['smu_channel2_source'])
+        # smu.set_current_limit(data[1][2])
+        smu.set_autorange(2)
+        smu.output_on(2)
+        if self.params_spectrum['source_func2'] == 'curr':
+            out2 = smu.read_voltage(2)
+        else:
+            out2 = smu.read_current(2)
+        print(f"Applied {self.params_spectrum['source_func2']}: {self.params_spectrum['smu_channel2_source']}, Measured Current: {out2}A")
+
+
+        current_timestamp = timestamp or datetime.now().strftime("%Y%m%dT%H%M%S")
+        folder_path = self.base_path_config
+
+        #library for optical spectrum analyzer
+        from AQ6370Controls import AQ6370Controls
+        osa = AQ6370Controls(self.params_spectrum['OSA_addr'])
+        osaBusy = threading.Event()  # OSA Busy Event
+
+        """connect_to_osa: Retrieves inputs from Excel sheet
+            and tries to connect to OSA
+            Does not try to connect if OSA connection is busy"""
+        if osaBusy.is_set():  # If OSA busy
+            # write_text_box(textbox, 'OSA Busy Error')
+            print("OSA Busy Error")
+            print("OSA busy. Exiting function")
+
+        osaBusy.set()  # Set event osaBusy
+        osa.setAddress(self.params_spectrum['OSA_addr'])  # connect to OSA through IP address
 
         try:
-            print("\n--- Initializing SMU1 ---")
-            self.smu1.reset()
-            print("\n--- Initializing SMU2 ---")
-            self.smu2.reset()
-            time.sleep(settle_time)
+            # write_text_box(textbox, 'Connecting to OSA')
+            print("Connecting to OSA")
+            osa.open()  # Try to open OSA
+        except Exception as e:  # Exception
+            # write_text_box(textbox, f'Cannot Connect to OSA: error {e}')  # Print error to text box
+            print(f'Cannot Connect to OSA: error {e}')
+            # connectedlabel.config(text='Not Connected', bg='red3')  # Red label
+        else:  # Connected
+            # connectedlabel.config(text='Connected', bg='green3')  # Set green label
+            print("Connected to OSA")
+            # write_text_box(textbox, 'Connected to OSA')  # Write connected to OSA
+        finally:
+            osaBusy.clear()  # Clear event
 
-            current_timestamp = timestamp or datetime.now().strftime("%Y%m%dT%H%M%S")
-            folder_path = self.base_path_config
-
-            from AQ6370Controls import AQ6370Controls
-            osa = AQ6370Controls(self.params_spectrum['OSA_addr'])
-            osaBusy = threading.Event()  # OSA Busy Event
-
-            """connect_to_osa: Retrieves inputs from Excel sheet
-                 and tries to connect to OSA
-                 Does not try to connect if OSA connection is busy"""
-            if osabusy.is_set():  # If OSA busy
-                # write_text_box(textbox, 'OSA Busy Error')
-                print("OSA Busy Error")
-                print("OSA busy. Exiting function")
-
-            osaBusy.set()  # Set event osaBusy
-            osa.setAddress(self.params_spectrum['OSA_addr'])  # connect to OSA through IP address
-
-            try:
-                # write_text_box(textbox, 'Connecting to OSA')
-                print("Connecting to OSA")
-                osa.open()  # Try to open OSA
-            except Exception as e:  # Exception
-                # write_text_box(textbox, f'Cannot Connect to OSA: error {e}')  # Print error to text box
-                print(f'Cannot Connect to OSA: error {e}')
-                # connectedlabel.config(text='Not Connected', bg='red3')  # Red label
-            else:  # Connected
-                 # connectedlabel.config(text='Connected', bg='green3')  # Set green label
-                print("Connected to OSA")
-                # write_text_box(textbox, 'Connected to OSA')  # Write connected to OSA
-            finally:
-                osaBusy.clear()  # Clear event
-
-            center = osa.setCenter(Spectrum.params_spectrum['centre'])  # '1310'
-            span = osa.setSpan(self.params_spectrum['span'])  # '10'
-            resolution = osa.setResolution(self.params_spectrum['res'])  # '0.02'
-            sensitivity = osa.setSensitivity(self.params_spectrum['sens'])  # 'High1'
-            average = osa.setAvg(self.params_spectrum['avg'])
-            reference_value = osa.setRefValue(self.params_spectrum['ref_val'])
+        center = osa.setCenter(self.params_spectrum['centre'])  # '1310'
+        span = osa.setSpan(self.params_spectrum['span'])  # '10'
+        resolution = osa.setResolution(self.params_spectrum['res'])  # '0.02'
+        sensitivity = osa.setSensitivity(self.params_spectrum['sens'])  # 'High1'
+        average = osa.setAvg(self.params_spectrum['avg'])
+        reference_value = osa.setRefValue(self.params_spectrum['ref_val'])
 
 
-            print("Performing Sweep...")
+        print("Performing Sweep...")
 
-            osa.singleSweep()  # Perform single sweep and print peak power and peak wavelength
-            pkpow = round(osa.getPeakPower(), 3)
-            pkwl = round(osa.getPeakWavelength(), 3)
-            smsr = [round(item * 1e9, 3) if item > 0 and item < 1e-5 else item for item in osa.getSMSR()]
-            print(
-                f'Peak Power: {round(osa.getPeakPower(), 3)} dBm\nPeak Wavelength: {round(osa.getPeakWavelength(), 3)} nm\nSMSR: {[round(item * 1e9, 3) if item > 0 and item < 1e-5 else item for item in osa.getSMSR()]} dB')
+        osa.singleSweep()  # Perform single sweep and print peak power and peak wavelength
+        pkpow = round(osa.getPeakPower(), 3)
+        pkwl = round(osa.getPeakWavelength(), 3)
+        smsr = [round(item * 1e9, 3) if item > 0 and item < 1e-5 else item for item in osa.getSMSR()]
+        print(
+            f'Peak Power: {round(osa.getPeakPower(), 3)} dBm\nPeak Wavelength: {round(osa.getPeakWavelength(), 3)} nm\nSMSR: {[round(item * 1e9, 3) if item > 0 and item < 1e-5 else item for item in osa.getSMSR()]} dB')
 
-            osaBusy.clear()  # Clear OSA busy event
-            timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
+        osaBusy.clear()  # Clear OSA busy event
+        timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
 
-            """Saves sweep data in Excel sheet
-                Does not save sweep data if OSA is not connected or is busy
-                """
+        """Saves sweep data in Excel sheet
+            Does not save sweep data if OSA is not connected or is busy
+        """
 
-            if not osa.connected:  # OSA Not Connected
-                print("OSA Not Connected Error")
-            else:
-                if osaBusy.is_set():  # OSA busy
+        if not osa.connected:  # OSA Not Connected
+            print("OSA Not Connected Error")
+        else:
+            if osaBusy.is_set():  # OSA busy
                     print("OSA busy. Exiting function")
                     sys.exit()
 
-            osaBusy.set()  # Set OSA busy event
-            (xvals, yvals) = osa.getTraceVals()  # Get trace vals (xvals, yvals)
-            osaBusy.clear()  # Clear OSA busy event
+        osaBusy.set()  # Set OSA busy event
+        (xvals, yvals) = osa.getTraceVals()  # Get trace vals (xvals, yvals)
+        osaBusy.clear()  # Clear OSA busy event
             
-            data_file_name = str(device_id) + "_" +str(temperature)+ "C" + "_" + str("80mA")
+        data_file_name = str(device_id) + "_" +str(temperature)+ "C" + "_" + str("80mA")
 
-            plt.show(block=False)  # Show plot window
-            csvfile_name1 = f'{data_file_name}_{timestamp}.csv'
-            csvfile_path1 = os.path.join(folder_path, csvfile_name1)
-            np.savetxt(csvfile_path1, np.transpose([xvals, yvals]), delimiter=',', header='Freq, Amplitude',
+        plt.show(block=False)  # Show plot window
+        csvfile_name1 = f'{data_file_name}_{timestamp}.csv'
+        csvfile_path1 = os.path.join(folder_path, csvfile_name1)
+        np.savetxt(csvfile_path1, np.transpose([xvals, yvals]), delimiter=',', header='Freq, Amplitude',
                        comments='', fmt='%f')
 
-            smu.set_current(2, 0.08)
-            smu.output_off(1)
-            smu.output_off(2)
+        self.smu1.set_current(2, 0.08)
+        self.smu1.output_off(1)
+        self.smu1.output_off(2)
 
+        """
+            Opens a plot window with the OSA sweep data
+            Does not perform sweep if OSA is not connected or is busy
             """
-                Opens a plot window with the OSA sweep data
-                Does not perform sweep if OSA is not connected or is busy
-                """
-            if not osa.connected:
-                print("OSA Not Connected Error")
-                sys.exit()
-            if osaBusy.is_set():  # OSA Busy
-                print("OSA busy. Exiting function")
-                sys.exit()
-            osaBusy.set()  # Set OSA busy event
-            (xvals, yvals) = osa.getTraceVals()  # Get trace vals (xvals, yvals)
-            osaBusy.clear()  # Clear OSA busy event
-            fig1, ax1 = plt.subplots()  # Set up plot window
-            ax1.plot(xvals, yvals)
-            ax1.set_xlabel('Wavelength (nm)')
-            ax1.set_ylabel('Amplitude (dBm)')
-            ax1.set_title('Amplitude vs wavelength')
-            plt.grid(True)
-            plt.show(block=False)  # Show plot window
+        if not osa.connected:
+            print("OSA Not Connected Error")
+            sys.exit()
+        if osaBusy.is_set():  # OSA Busy
+            print("OSA busy. Exiting function")
+            sys.exit()
+        osaBusy.set()  # Set OSA busy event
+        (xvals, yvals) = osa.getTraceVals()  # Get trace vals (xvals, yvals)
+        osaBusy.clear()  # Clear OSA busy event
+        fig1, ax1 = plt.subplots()  # Set up plot window
+        ax1.plot(xvals, yvals)
+        ax1.set_xlabel('Wavelength (nm)')
+        ax1.set_ylabel('Amplitude (dBm)')
+        ax1.set_title('Amplitude vs wavelength')
+        plt.grid(True)
+        plt.show(block=False)  # Show plot window
 
-            if not osa.connected:
-                print("OSA Not Connected Error")
-                sys.exit()
-            if osaBusy.is_set():  # OSA Busy
-                print("OSA busy. Exiting function")
-                sys.exit()
+        if not osa.connected:
+            print("OSA Not Connected Error")
+            sys.exit()
+        if osaBusy.is_set():  # OSA Busy
+            print("OSA busy. Exiting function")
+            sys.exit()
 
-            osaBusy.set()  # Set OSA busy event
-            (xvals, yvals) = osa.getTraceVals()  # Get trace vals (xvals, yvals)
-            osaBusy.clear()  # Clear OSA busy event
-            fig1, ax1 = plt.subplots()  # Set up plot window
-            ax1.plot(xvals, yvals)
-            ax1.set_xlabel('Wavelength (nm)')
-            ax1.set_ylabel('Amplitude (dBm)')
-            ax1.set_title('Amplitude vs wavelength')
-            plt.grid(True)
+        osaBusy.set()  # Set OSA busy event
+        (xvals, yvals) = osa.getTraceVals()  # Get trace vals (xvals, yvals)
+        osaBusy.clear()  # Clear OSA busy event
+        fig1, ax1 = plt.subplots()  # Set up plot window
+        ax1.plot(xvals, yvals)
+        ax1.set_xlabel('Wavelength (nm)')
+        ax1.set_ylabel('Amplitude (dBm)')
+        ax1.set_title('Amplitude vs wavelength')
+        plt.grid(True)
 
 
-            plt.show(block=False)  # Show plot window
+        plt.show(block=False)  # Show plot window
 
-            file_name = f'{data_file_name}_{timestamp}.jpg'
-            file_path = os.path.join(folder_path, file_name)
+        file_name = f'{data_file_name}_{timestamp}.jpg'
+        file_path = os.path.join(folder_path, file_name)
 
-            plt.show(block=False)  # Show plot window
-            csvfile_name = f'{data_file_name}_{timestamp}.csv'
-            csvfile_path = os.path.join(folder_path, csvfile_name)
-            np.savetxt(csvfile_path, np.transpose([xvals, yvals]), delimiter=',', header='Freq, Amplitude',
-                       comments='', fmt='%f')
-            list1 = [pkpow, pkwl]
-            list1.extend(smsr)
-            data_to_save_np = np.array(list1).reshape(1, -1)
-            speparamfile_name = f'{data_file_name}_pkpow_pkwl_smsr_{timestamp}.csv'
-            speparamfile_path = os.path.join(folder_path, speparamfile_name)
-            np.savetxt(speparamfile_path, data_to_save_np, delimiter=',',
-                       header='pkpow, pkwl, wl1, pow1, wl2, pow2, dwl, smsr ',
-                       comments='', fmt='%f')
-            plt.savefig(file_path)
+        plt.show(block=False)  # Show plot window
+        csvfile_name = f'{data_file_name}_{timestamp}.csv'
+        csvfile_path = os.path.join(folder_path, csvfile_name)
+        np.savetxt(csvfile_path, np.transpose([xvals, yvals]), delimiter=',', header='Freq, Amplitude',
+                    comments='', fmt='%f')
+        list1 = [pkpow, pkwl]
+        list1.extend(smsr)
+        data_to_save_np = np.array(list1).reshape(1, -1)
+        speparamfile_name = f'{data_file_name}_pkpow_pkwl_smsr_{timestamp}.csv'
+        speparamfile_path = os.path.join(folder_path, speparamfile_name)
+        np.savetxt(speparamfile_path, data_to_save_np, delimiter=',',
+                    header='pkpow, pkwl, wl1, pow1, wl2, pow2, dwl, smsr ',
+                    comments='', fmt='%f')
+        plt.savefig(file_path)
 
-        except ConnectionError as e:
-            print(f"Connection Error during test: {e}")
-        except pyvisa.errors.VisaIOError as e:
-            print(f"A VISA communication error occurred: {e}")
-        except Exception as e:
-            print(f"An unexpected error occurred during the script execution: {e}")
-            import traceback
-            traceback.print_exc()
+
 
 
 
