@@ -104,15 +104,13 @@ class Extraction(Base):
         spectrum_button.grid(row=3, column=0, pady=2, sticky="W")
 
     def run_test(self, data_path="", device_id="", temperature="", timestamp=""):
-        print(f"Running {self.curr_controller.name} at {timestamp}")
-        print(f"Data Path: {self.curr_controller.base_path_config}")
-        get_LIV_data(data_path)
-        get_extinction(data_path)
-        get_spectrum_data(data_path)
+        print(f"Running Data Extraction at {data_path}")
+        self.get_LIV_data(str(data_path))
+        self.get_extinction(str(data_path))
+        self.get_spectrum_data(str(data_path))
 
-    def get_LIV_data(self):
-        print("Getting LIV Data")
-        input_dir = self.path
+    def get_LIV_data(self, input_dir):
+        print("\nGetting LIV Data...")
         if not os.path.isdir(input_dir):
             print(f"Error: Folder {input_dir} not found")
             return
@@ -206,9 +204,8 @@ class Extraction(Base):
             results_df.to_excel(output_path, index=False)
             print(f"File Saved to {output_path}")
 
-    def get_extinction(self):
-        print("Getting Extinction Data")
-        input_dir = self.path
+    def get_extinction(self, input_dir):
+        print("\nGetting Extinction Data...")
         if not os.path.isdir(input_dir):
             return
 
@@ -304,9 +301,8 @@ class Extraction(Base):
         workbook.save(output_path)
         print(f"File Saved to {output_path}")
 
-    def get_spectrum_data(self):
-        print("Getting Spectrum Data")
-        input_dir = self.path
+    def get_spectrum_data(self, input_dir):
+        print("\nGetting Spectrum Data...")
         if not os.path.isdir(input_dir):
             return
 

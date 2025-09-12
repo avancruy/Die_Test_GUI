@@ -17,7 +17,6 @@ class Base:
         self.smu_resources2_addr = smu_resources['smu2']
         self.smu1 = None
         self.smu2 = None
-        self.path = "C:/Users/labaccount.ELPHIC/Documents/TX03_submount_xpt/"
 
         self.name = "Base"
         self.params_photodetector = {}
@@ -43,8 +42,6 @@ class Base:
         # For 90% duty cycle: pulse_width = 36.0e-3, trigger_period = 40e-3
         # For 75% duty cycle: pulse_width = 30.0e-3, trigger_period = 40e-3
         # For 50% duty cycle: pulse_width = 20.0e-3, trigger_period = 40e-3
-
-        self.base_path_config = "C:/Users/labaccount.ELPHIC/Documents/TX03_submount_xpt/"
 
     def setup_tab(self, parent):
         # Create main columns container
@@ -580,7 +577,6 @@ class Spectrum(Base):
 
 
         current_timestamp = timestamp or datetime.now().strftime("%Y%m%dT%H%M%S")
-        folder_path = self.base_path_config
 
         #library for optical spectrum analyzer
         from AQ6370Controls import AQ6370Controls

@@ -119,7 +119,7 @@ class PulsedGuiApp:
         # Data Path (shorter)
         tk.Label(control_grid, text="Path:", font=('Arial', 9, 'bold')).grid(row=0, column=4, padx=(0, 5), pady=2,
                                                                              sticky=tk.W)
-        self.path_var = tk.StringVar(value=self.curr_controller.base_path_config)
+        self.path_var = tk.StringVar(value="C:/Users/labaccount.ELPHIC/Documents/TX03_submount_xpt/")
         path_entry = ttk.Entry(control_grid, textvariable=self.path_var, width=25)
         path_entry.grid(row=0, column=5, padx=(0, 5), pady=2, sticky=tk.EW)
         browse_button = ttk.Button(control_grid, text="...", command=self.browse_path, width=3)
@@ -135,10 +135,6 @@ class PulsedGuiApp:
         # Configure column weights
         control_grid.columnconfigure(1, weight=1)
         control_grid.columnconfigure(5, weight=2)
-
-        self.path_var.trace_add("write",
-                                lambda *args: setattr(self.curr_controller, 'base_path_config',
-                                                      self.path_var.get()))
 
         # --- Compact Status Display ---
         self.status_var = tk.StringVar(value="Ready")
@@ -156,14 +152,14 @@ class PulsedGuiApp:
         self.notebook = ttk.Notebook(main_panel)
         self.notebook.pack(expand=True, fill="both", pady=10)
 
-        controller_sets = [
+        tab_config = [
             ("LIV", self.liv_controller),
             ("EAM", self.eam_controller),
             ("Spectrum", self.spectrum_controller),
             ("Data Extraction", self.extraction_controller)
         ]
 
-        for name, controller in controller_sets:
+        for name, controller in tab_config:
             tab = ttk.Frame(self.notebook, padding="50")
             self.notebook.add(tab, text=name)
             #self.create_param_entries(tab, params_dict, name)  # Pass name for unique var keys
@@ -235,20 +231,13 @@ class PulsedGuiApp:
         """Browse for an Excel file to plot"""
         file_path = filedialog.askopenfilename(
             title="Select Excel file to plot",
-            filetypes=[("Excel files", "*.xlsx *.xls"), ("All files", "*.*")]
+            filetypes=[("Excel or CSV files", "*.xlsx *.xls *.csv"), ("All files", "*.*")]
         )
         if file_path:
             self.excel_path_var.set(file_path)
             self.current_excel_file = file_path
 
     def plot_excel_data(self):
-        # Plot LIV or EAM data
-        if (self.notebook.index('current') == 0 or self.notebook.index('current') == 1):
-            self.plot_liveam_data()
-        else:
-            self.plot_spectrum_data()
-
-    def plot_liveam_data(self):
         """Plot data from the selected Excel file"""
         excel_file_path = self.excel_path_var.get()
 
@@ -262,14 +251,18 @@ class PulsedGuiApp:
 
         try:
             # Read the Excel file into a pandas DataFrame
-            df = pd.read_excel(excel_file_path)
+            if excel_file_path.endswith(('.xlsx', '.xls')):
+                df = pd.read_excel(excel_file_path)
+            elif excel_file_path.endswith(".csv"):
+                df = pd.read_csv(excel_file_path)
+            else:
+                raise Exception
         except Exception as e:
             messagebox.showerror("Error Reading Excel", f"Could not read the Excel file. Error: {e}")
             return
 
         # Get the filename to determine test type
         filename = os.path.basename(excel_file_path)
-
         # Determine column mappings based on test type
         if '_LIV_' in filename:
             # Original LIV test columns
@@ -278,7 +271,9 @@ class PulsedGuiApp:
             y2_col = 'SMU1_Ch2_Laser_Voltage_Meas_V'
             x_label = 'Laser Current Set (mA)'
             y1_label = 'PD Current (mA)'
+            y1_colour = 'red'
             y2_label = 'Laser Voltage (V)'
+            y2_colour = 'blue'
             title_prefix = 'Laser Characterization (LIV)'
         elif '_EAM_' in filename:
             # EAM test columns
@@ -287,41 +282,47 @@ class PulsedGuiApp:
             y2_col = 'SMU2_Ch1_EAM_Current_Meas_mA'
             x_label = 'EAM Voltage Set (V)'
             y1_label = 'PD Current (mA)'
+            y1_colour = 'red'
             y2_label = 'EAM Current (mA)'
+            y2_colour = 'blue'
             title_prefix = 'Laser Characterization (EAM)'
+        elif '_55C_80mA_' in filename: # Change name of spectrum files
+            x_col = 'Freq'
+            y1_col = ' Amplitude'
+            y2_col = None
+            x_label = 'Wavelength (nm)'
+            y1_label = 'Amplitude (dBm)'
+            y1_colour = 'blue'
+            y2_label = None
+            y2_colour = None
+            title_prefix = 'Spectrum Plot'
+            print(df[' Amplitude'])
+            print("Done")
         else:
             messagebox.showerror("Unknown Test Type",
                                  f"Could not determine test type from filename: {filename}\n"
                                  "Expected '_LIV_' or '_EAM_' in filename.")
             return
 
-        required_cols = [x_col, y1_col, y2_col]
-        missing_columns = [col for col in required_cols if col not in df.columns]
-
-        if missing_columns:
-            messagebox.showerror("Missing Columns",
-                                 f"The following required columns were not found in the Excel file: {', '.join(sorted(missing_columns))}\n"
-                                 "Please ensure the spreadsheet has the correct headers.")
-            return
-
         # Clear the previous plot and make axes visible
         self.ax.clear()
         self.ax.set_visible(True)
 
-        # Create a second Y-axis
-        ax2 = self.ax.twinx()
-
         # Plot PD Current on the primary Y-axis
-        self.ax.plot(df[x_col], df[y1_col], marker='o', linestyle='-', markersize=3, color='red',
+        self.ax.plot(df[x_col], df[y1_col], marker='o', linestyle='-', markersize=3, color=y1_colour,
                      label=y1_label, linewidth=2)
-        self.ax.set_ylabel(y1_label, color='red', fontweight='bold')
-        self.ax.tick_params(axis='y', labelcolor='red')
+        self.ax.set_ylabel(y1_label, color=y1_colour, fontweight='bold')
+        self.ax.tick_params(axis='y', labelcolor=y1_colour)
 
-        # Plot second parameter on the secondary Y-axis
-        ax2.plot(df[x_col], df[y2_col], marker='s', linestyle='--', markersize=3, color='blue',
-                 label=y2_label, linewidth=2)
-        ax2.set_ylabel(y2_label, color='blue', fontweight='bold')
-        ax2.tick_params(axis='y', labelcolor='blue')
+        if y2_col != None:
+            # Create a second Y-axis
+            ax2 = self.ax.twinx()
+
+            # Plot second parameter on the secondary Y-axis
+            ax2.plot(df[x_col], df[y2_col], marker='s', linestyle='--', markersize=3, color=y2_colour,
+                     label=y2_label, linewidth=2)
+            ax2.set_ylabel(y2_label, color=y2_colour, fontweight='bold')
+            ax2.tick_params(axis='y', labelcolor=y2_colour)
 
         # Set common title and X-axis label
         self.ax.set_title(f'{title_prefix}\n{os.path.basename(excel_file_path)}', fontsize=10, fontweight='bold')
@@ -330,8 +331,9 @@ class PulsedGuiApp:
 
         # Combine legends from both axes
         lines, labels = self.ax.get_legend_handles_labels()
-        lines2, labels2 = ax2.get_legend_handles_labels()
-        ax2.legend(lines + lines2, labels + labels2, loc='upper left', fontsize=8)
+        if y2_col != None:
+            lines2, labels2 = ax2.get_legend_handles_labels()
+            ax2.legend(lines + lines2, labels + labels2, loc='upper left', fontsize=8)
 
         # Adjust layout to prevent labels from being cut off
         self.fig.tight_layout(pad=3.0)
@@ -340,10 +342,6 @@ class PulsedGuiApp:
         self.canvas.draw()
 
         self.update_status(f"📊 Plotted: {os.path.basename(excel_file_path)}", "#2e8b57")
-
-    def plot_spectrum_data(self):
-        #to be added
-        pass
 
     def clear_plot(self):
         """Clear the current plot"""
@@ -368,7 +366,7 @@ class PulsedGuiApp:
 
             excel_files = []
             for file in os.listdir(data_path):
-                if file.endswith(('.xlsx', '.xls')):
+                if file.endswith(('.xlsx', '.xls', '.csv')):
                     file_path = os.path.join(data_path, file)
                     excel_files.append((file_path, os.path.getmtime(file_path)))
 
@@ -437,7 +435,7 @@ class PulsedGuiApp:
         elif self.curr_controller.name == "Spectrum":
             print(f"Spectrum Params: {self.curr_controller.param_spectrum}")
 
-        print(f"Data Path: {self.curr_controller.base_path_config}")
+        print(f"Data Path: {self.path_var.get()}")
 
         # Run the test in a separate thread
         test_thread = threading.Thread(target=self.execute_test_and_reenable_button,
@@ -447,7 +445,7 @@ class PulsedGuiApp:
 
     def execute_test_and_reenable_button(self, device_id, temperature, timestamp):
         try:
-            self.curr_controller.run_test(data_path=self.path_var, device_id=device_id, temperature=temperature, timestamp=timestamp)
+            self.curr_controller.run_test(data_path=self.path_var.get(), device_id=device_id, temperature=temperature, timestamp=timestamp)
             print("Test execution finished.")
             self.root.after(0, lambda: self.update_status("Test completed successfully ✓", "#2e8b57"))
 
