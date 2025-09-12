@@ -512,11 +512,11 @@ class Spectrum(Base):
         self.name = "Spectrum"
 
         self.PARAM_METADATA = {
-            "source_func1": ("Channel 1 Mode", str, [("Voltage(V)", "volt"), ("Current(mA)", "curr")]),
+            "source_func1": ("Channel 1 Mode", str, [("Voltage(V)", "VOLT"), ("Current(A)", "CURR")]),
             "smu_channel1_source": ("Channel 1 Source (A)", float, None),
             "smu_channel1_limit": ("Channel 1 limit", float, None),
 
-            "source_func2": ("Channel 2 Mode", str, [("Voltage(V)", "volt"), ("Current(mA)", "curr")]),
+            "source_func2": ("Channel 2 Mode", str, [("Voltage(V)", "VOLT"), ("Current(A)", "CURR")]),
             "smu_channel2_source": ("Channel 2 Source (V)", float, None),
             "smu_channel2_limit": ("Channel 2 limit", float, None),
 
@@ -531,10 +531,10 @@ class Spectrum(Base):
             "smu_ip_addr": ("SMU IP Address", str, None)
         }
         self.params_spectrum = { # SMU 1 Channels 1 & 2, OSA
-            "source_func1": "volt", "smu_channel1_source": -2, "smu_channel1_limit": 0.02,
-            "source_func2": "Current(mA)", "smu_channel2_source": 0.08, "smu_channel2_limit": 2.5,
+            "source_func1": "VOLT", "smu_channel1_source": -2, "smu_channel1_limit": 0.02,
+            "source_func2": "CURR", "smu_channel2_source": 0.08, "smu_channel2_limit": 2.5,
             "centre": 1310, "span": 12, "res": 0.02, "sens": 'High1', "avg": 1, "ref_val": -20,
-            "OSA_addr": "10.20.0.199", smu_ip_addr: "10.20.0.38"
+            "OSA_addr": "10.20.0.199", "smu_ip_addr": "10.20.0.38"
         }
 
         self.param_sets = [
@@ -546,34 +546,34 @@ class Spectrum(Base):
 
         #connecting to SMU1 only (both channels) for spectrum test
         from KeysightB2912A import KeysightB2912A
-        smu_ip_addr = "10.20.0.38"
 
         smu = KeysightB2912A('TCPIP0::10.20.0.231::hislip0::INSTR')  # Replace with your actual IP
         smu.get_idn()
 
         smu.set_mode(1, self.params_spectrum['source_func1'])
-        if ch1_mode_input == 'curr':
+        if self.params_spectrum['source_func1'] == 'CURR':
             smu.set_current(1, self.params_spectrum['smu_channel1_source'])
+        #the else condition is what should always occur when running spectrum test, so why is there a condition at all? -Matthew
         else:
             smu.set_voltage(1, self.params_spectrum['smu_channel1_source'])
         # smu.set_current_limit(data[1][2])
         smu.set_autorange(1)
         smu.output_on(1)
-        if self.params_spectrum['smu_channel1_source'] == 'curr':
+        if self.params_spectrum['source_func1'] == 'CURR':
             out1 = smu.read_voltage(1)
         else:
             out1 = smu.read_current(1)
-        print(f"Applied {self.params_spectrum['source_func1']}: {self.params_spectrum[smu_channel1_source]}, Measured: {out1}V")
+        print(f"Applied {self.params_spectrum['source_func1']}: {self.params_spectrum['smu_channel1_source']}, Measured: {out1}V")
 
         smu.set_mode(2, self.params_spectrum['source_func2'])
-        if self.params_spectrum['source_func2'] == 'curr':
+        if self.params_spectrum['source_func2'] == 'CURR':
             smu.set_current(2, self.params_spectrum['smu_channel2_source'])
         else:
             smu.set_voltage(2, self.params_spectrum['smu_channel2_source'])
         # smu.set_current_limit(data[1][2])
         smu.set_autorange(2)
         smu.output_on(2)
-        if self.params_spectrum['source_func2'] == 'curr':
+        if self.params_spectrum['source_func2'] == 'CURR':
             out2 = smu.read_voltage(2)
         else:
             out2 = smu.read_current(2)
