@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import matplotlib
 from utils import *
+from data_extraction import Extraction
+
 import time
 """
 Ari Van Cruyningen, Matthew Manjaly
@@ -32,6 +34,7 @@ class PulsedGuiApp:
         self.liv_controller = LIV(smu_resources)
         self.eam_controller = EAM(smu_resources)
         self.spectrum_controller = Spectrum(smu_resources)
+        self.extraction_controller = Extraction(smu_resources)
         self.curr_controller = self.liv_controller
         #self.param_vars = {}  # To store Tkinter variables for parameters
         self.sync_in_progress = False  # Flag to prevent infinite sync loops
@@ -65,6 +68,11 @@ class PulsedGuiApp:
         directory = filedialog.askdirectory()
         if directory:
             self.path_var.set(directory.replace("\\", "/") + "/")
+            self.liv_controller.path = directory
+            self.eam_controller.path = directory
+            self.spectrum_controller.path = directory
+            self.extraction_controller.path = directory
+
 
     def setup_gui(self):
         # Create main horizontal paned window
@@ -151,7 +159,8 @@ class PulsedGuiApp:
         controller_sets = [
             ("LIV", self.liv_controller),
             ("EAM", self.eam_controller),
-            ("Spectrum", self.spectrum_controller)
+            ("Spectrum", self.spectrum_controller),
+            ("Data Extraction", self.extraction_controller)
         ]
 
         for name, controller in controller_sets:
@@ -378,18 +387,27 @@ class PulsedGuiApp:
         self.status_label.configure(fg=color)
 
     def run_test_threaded(self):
+        device_id = None
+        temperature = None
+        timestamp = None
+
         self.current_tab = self.notebook.index('current')
         self.run_button.config(state=tk.DISABLED, text="⏳ Running...", bg='#ff9800')
-        test_type = ""
-        if (self.current_tab == 0):
-            test_type = "LIV"
+
+        if (self.current_tab == 0):     # LIV
             self.curr_controller = self.liv_controller
-        elif (self.current_tab == 1):
-            test_type = "EAM"
+        elif (self.current_tab == 1):   # EAM
             self.curr_controller = self.eam_controller
-        else:
-            test_type = "Spectrum"
+        elif (self.current_tab == 2):   # Spectrum
             self.curr_controller = self.spectrum_controller
+        else:                           # Data Extraction
+            # Skip all initialization
+            self.curr_controller = self.extraction_controller
+            test_thread = threading.Thread(target=self.execute_test_and_reenable_button,
+                                           args=(device_id, temperature, timestamp))
+            test_thread.daemon = True
+            test_thread.start()
+            return
 
         self.update_status(f"Running {self.curr_controller.name} test...", "#4682b4")
         device_id = self.device_entry.get()
@@ -416,6 +434,9 @@ class PulsedGuiApp:
             print(f"Photodetector Params: {self.curr_controller.params_photodetector}")
             print(f"Laser Params: {self.curr_controller.params_laser}")
             print(f"EAM Params: {self.curr_controller.params_eam}")
+        elif self.curr_controller.name == "Spectrum":
+            print(f"Spectrum Params: {self.curr_controller.param_spectrum}")
+
         print(f"Data Path: {self.curr_controller.base_path_config}")
 
         # Run the test in a separate thread
@@ -426,7 +447,7 @@ class PulsedGuiApp:
 
     def execute_test_and_reenable_button(self, device_id, temperature, timestamp):
         try:
-            self.curr_controller.run_test(device_id=device_id, temperature=temperature, timestamp=timestamp)
+            self.curr_controller.run_test(data_path=self.path_var, device_id=device_id, temperature=temperature, timestamp=timestamp)
             print("Test execution finished.")
             self.root.after(0, lambda: self.update_status("Test completed successfully ✓", "#2e8b57"))
 

@@ -1,6 +1,5 @@
 import tkinter as tk
 from tkinter import ttk
-import pyvisa
 from utils import *
 import time
 import threading
@@ -18,7 +17,7 @@ class Base:
         self.smu_resources2_addr = smu_resources['smu2']
         self.smu1 = None
         self.smu2 = None
-        self.base_path_config = "C:/Users/labaccount.ELPHIC/Documents/TX03_submount_xpt/"
+        self.path = "C:/Users/labaccount.ELPHIC/Documents/TX03_submount_xpt/"
 
         self.name = "Base"
         self.params_photodetector = {}
@@ -250,7 +249,7 @@ class Base:
             self.smu2 = None
             return False
 
-    def run_test(self, device_id="", temperature="", timestamp=""):
+    def run_test(self, data_path="", device_id="", temperature="", timestamp=""):
         settle_time = 0.5
 
         if not self.connect_smus():
@@ -327,7 +326,7 @@ class Base:
                 test_checker,
                 device_id,
                 temperature,
-                self.base_path_config
+                data_path
             )
 
             if success:
@@ -542,7 +541,7 @@ class Spectrum(Base):
         ]
 
     # override of run_test function to run spectrum test
-    def run_test(self, device_id="", temperature="", timestamp=""):
+    def run_test(self, data_path="", device_id="", temperature="", timestamp=""):
 
         #connecting to SMU1 only (both channels) for spectrum test
         from KeysightB2912A import KeysightB2912A
@@ -653,7 +652,7 @@ class Spectrum(Base):
 
         plt.show(block=False)  # Show plot window
         csvfile_name1 = f'{data_file_name}_{timestamp}.csv'
-        csvfile_path1 = os.path.join(folder_path, csvfile_name1)
+        csvfile_path1 = os.path.join(data_path, csvfile_name1)
         np.savetxt(csvfile_path1, np.transpose([xvals, yvals]), delimiter=',', header='Freq, Amplitude',
                        comments='', fmt='%f')
 
@@ -703,18 +702,18 @@ class Spectrum(Base):
         plt.show(block=False)  # Show plot window
 
         file_name = f'{data_file_name}_{timestamp}.jpg'
-        file_path = os.path.join(folder_path, file_name)
+        file_path = os.path.join(data_path, file_name)
 
         plt.show(block=False)  # Show plot window
         csvfile_name = f'{data_file_name}_{timestamp}.csv'
-        csvfile_path = os.path.join(folder_path, csvfile_name)
+        csvfile_path = os.path.join(data_path, csvfile_name)
         np.savetxt(csvfile_path, np.transpose([xvals, yvals]), delimiter=',', header='Freq, Amplitude',
                     comments='', fmt='%f')
         list1 = [pkpow, pkwl]
         list1.extend(smsr)
         data_to_save_np = np.array(list1).reshape(1, -1)
         speparamfile_name = f'{data_file_name}_pkpow_pkwl_smsr_{timestamp}.csv'
-        speparamfile_path = os.path.join(folder_path, speparamfile_name)
+        speparamfile_path = os.path.join(data_path, speparamfile_name)
         np.savetxt(speparamfile_path, data_to_save_np, delimiter=',',
                     header='pkpow, pkwl, wl1, pow1, wl2, pow2, dwl, smsr ',
                     comments='', fmt='%f')
