@@ -3,20 +3,15 @@ from tkinter import ttk, messagebox, filedialog
 import threading
 from datetime import datetime
 import os
-import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import matplotlib
 from utils import *
 from data_extraction import Extraction
-
-import time
 """
 Ari Van Cruyningen, Matthew Manjaly
 """
 matplotlib.use('TkAgg')  # Use TkAgg backend for tkinter integration
-
-import collections.abc
 
 class PulsedGuiApp:
     def __init__(self, root):
@@ -76,8 +71,8 @@ class PulsedGuiApp:
 
     def setup_gui(self):
         # Create main horizontal paned window
-        main_paned = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
-        main_paned.pack(expand=True, fill=tk.BOTH, padx=10, pady=10)
+        main_paned = ttk.PanedWindow(self.root, orient='horizontal')
+        main_paned.pack(expand=True, fill='both', padx=10, pady=10)
 
         # Left panel for controls
         left_panel = tk.Frame(main_paned, bg='#f5f5f5')
@@ -98,11 +93,11 @@ class PulsedGuiApp:
 
         # --- Compact Top Controls ---
         controls_frame = ttk.LabelFrame(main_panel, text="Configuration", padding="8")
-        controls_frame.pack(fill=tk.X, pady=(0, 10))
+        controls_frame.pack(fill='x', pady=(0, 10))
 
         # Single row layout for all controls
         control_grid = tk.Frame(controls_frame)
-        control_grid.pack(fill=tk.X)
+        control_grid.pack(fill='x')
 
         # Device ID
         tk.Label(control_grid, text="Device:", font=('Arial', 9, 'bold')) \
@@ -129,12 +124,15 @@ class PulsedGuiApp:
         self.run_button = tk.Button(control_grid, text="▶ Run",
                                     bg='#4CAF50', fg='white', font=('Arial', 9, 'bold'),
                                     relief='raised', bd=2, padx=15, pady=5)
-        self.run_button.config(command=self.run_test_threaded);
+        self.run_button.config(command=self.run_test_threaded)
         self.run_button.grid(row=0, column=7, padx=10, pady=2)
 
         # Configure column weights
         control_grid.columnconfigure(1, weight=1)
         control_grid.columnconfigure(5, weight=2)
+
+        self.path_var.trace_add("write",
+                                lambda *args: setattr(self.extraction_controller, 'path', self.path_var.get()))
 
         # --- Compact Status Display ---
         self.status_var = tk.StringVar(value="Ready")
@@ -142,12 +140,6 @@ class PulsedGuiApp:
                                      font=('Arial', 10, 'bold'), fg='#333333', bg='#f5f5f5')
         self.status_label.pack(pady=(0, 8))
 
-        # --- Parameters Section (Three Columns) ---
-        #params_frame = ttk.LabelFrame(main_panel, text="Device Parameters", padding="8")
-        #params_frame.pack(expand=True, fill="both")
-
-        # Create three columns for parameters
-        #self.create_column_layout(params_frame)
         # --- Notebook for Parameters ---
         self.notebook = ttk.Notebook(main_panel)
         self.notebook.pack(expand=True, fill="both", pady=10)
@@ -174,11 +166,11 @@ class PulsedGuiApp:
 
         # --- Graph Controls ---
         graph_controls_frame = ttk.LabelFrame(main_panel, text="Graph Controls", padding="8")
-        graph_controls_frame.pack(fill=tk.X, pady=(0, 10))
+        graph_controls_frame.pack(fill='x', pady=(0, 10))
 
         # Compact controls layout
         controls_grid = tk.Frame(graph_controls_frame)
-        controls_grid.pack(fill=tk.X)
+        controls_grid.pack(fill='x')
 
         # Excel file selection (smaller)
         tk.Label(controls_grid, text="Excel:", font=('Arial', 9, 'bold')).grid(row=0, column=0, padx=(0, 5),
@@ -208,7 +200,7 @@ class PulsedGuiApp:
 
         # --- Graph Display Area ---
         graph_display_frame = ttk.LabelFrame(main_panel, text="Live Graph", padding="5")
-        graph_display_frame.pack(expand=True, fill=tk.BOTH)
+        graph_display_frame.pack(expand=True, fill='both')
 
         # Initialize matplotlib figure with smaller size for side panel
         self.fig, self.ax = plt.subplots(figsize=(6, 5))
@@ -220,8 +212,8 @@ class PulsedGuiApp:
         self.toolbar.update()
 
         # Pack toolbar and canvas
-        self.toolbar.pack(side=tk.TOP, fill=tk.X)
-        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        self.toolbar.pack(side='top', fill='x')
+        self.canvas.get_tk_widget().pack(side='top', fill=tk.BOTH, expand=True)
 
         # Initialize with clean empty plot
         self.ax.set_visible(False)
@@ -314,7 +306,7 @@ class PulsedGuiApp:
         self.ax.set_ylabel(y1_label, color=y1_colour, fontweight='bold')
         self.ax.tick_params(axis='y', labelcolor=y1_colour)
 
-        if y2_col != None:
+        if y2_col is not None:
             # Create a second Y-axis
             ax2 = self.ax.twinx()
 
@@ -324,16 +316,15 @@ class PulsedGuiApp:
             ax2.set_ylabel(y2_label, color=y2_colour, fontweight='bold')
             ax2.tick_params(axis='y', labelcolor=y2_colour)
 
+            # Combine legends from both axes
+            lines, labels = self.ax.get_legend_handles_labels()
+            lines2, labels2 = ax2.get_legend_handles_labels()
+            ax2.legend(lines + lines2, labels + labels2, loc='upper left', fontsize=8)
+
         # Set common title and X-axis label
         self.ax.set_title(f'{title_prefix}\n{os.path.basename(excel_file_path)}', fontsize=10, fontweight='bold')
         self.ax.set_xlabel(x_label, fontweight='bold')
         self.ax.grid(True, linestyle='--', alpha=0.3)
-
-        # Combine legends from both axes
-        lines, labels = self.ax.get_legend_handles_labels()
-        if y2_col != None:
-            lines2, labels2 = ax2.get_legend_handles_labels()
-            ax2.legend(lines + lines2, labels + labels2, loc='upper left', fontsize=8)
 
         # Adjust layout to prevent labels from being cut off
         self.fig.tight_layout(pad=3.0)
@@ -389,14 +380,14 @@ class PulsedGuiApp:
         temperature = None
         timestamp = None
 
-        self.current_tab = self.notebook.index('current')
-        self.run_button.config(state=tk.DISABLED, text="⏳ Running...", bg='#ff9800')
+        current_tab = self.notebook.index('current')
+        self.run_button.config(state='disabled', text="⏳ Running...", bg='#ff9800')
 
-        if (self.current_tab == 0):     # LIV
+        if current_tab == 0:     # LIV
             self.curr_controller = self.liv_controller
-        elif (self.current_tab == 1):   # EAM
+        elif current_tab == 1:   # EAM
             self.curr_controller = self.eam_controller
-        elif (self.current_tab == 2):   # Spectrum
+        elif current_tab == 2:   # Spectrum
             self.curr_controller = self.spectrum_controller
         else:                           # Data Extraction
             # Skip all initialization
@@ -421,7 +412,7 @@ class PulsedGuiApp:
             temp_val = string_to_num(temperature, float)
             if temp_val is None:
                 messagebox.showerror("Input Error", f"Invalid temperature value: {temperature}. Please enter a number.")
-                self.run_button.config(state=tk.NORMAL, text="▶ Run", bg='#4CAF50')
+                self.run_button.config(state='normal', text="▶ Run", bg='#4CAF50')
                 self.update_status("Ready")
                 return
             temperature = str(temp_val)
@@ -450,7 +441,7 @@ class PulsedGuiApp:
             self.root.after(0, lambda: self.update_status("Test completed successfully ✓", "#2e8b57"))
 
             # Auto-plot if enabled
-            if self.auto_plot_var.get():
+            if self.auto_plot_var.get() and self.curr_controller is not self.extraction_controller:
                 latest_file = self.find_latest_excel_file()
                 if latest_file:
                     self.root.after(0, lambda: self.excel_path_var.set(latest_file))
@@ -466,7 +457,7 @@ class PulsedGuiApp:
             self.root.after(0, lambda: self.update_status("Test failed ✗", "#dc143c"))
             self.root.after(0, lambda: messagebox.showerror("Test Error", f"An error occurred during the test:\n\n{e}"))
         finally:
-            self.root.after(0, lambda: self.run_button.config(state=tk.NORMAL, text="▶ Run", bg='#4CAF50'))
+            self.root.after(0, lambda: self.run_button.config(state='normal', text="▶ Run", bg='#4CAF50'))
 
     def on_closing(self):
         if messagebox.askokcancel("Quit", "Do you want to quit? This will close SMU connections if active."):
@@ -479,7 +470,8 @@ class PulsedGuiApp:
 try:
     from pulsed_classes import LIV, EAM, Spectrum
 except ImportError:
-    print("Warning: 'pulsed_liv_eam_test_class.py' not found. Using a dummy class for GUI demonstration.")
+    print("Error: 'pulsed_classes.py' not found")
+    exit()
 
 root = tk.Tk()
 app = PulsedGuiApp(root)

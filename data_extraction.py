@@ -32,7 +32,7 @@ def linear_regression(x, y):
         return np.nan, np.nan, np.nan, np.nan, np.nan
 
     slope = numerator / denominator
-    intercept = y_mean - slope * x_mean
+    intercept = y_mean - slope * int(x_mean)
 
     # Calculate correlation coefficient (r_value)
     y_pred = slope * x + intercept
@@ -87,19 +87,20 @@ def extract_date_from_filename(filename):
         return np.nan
 
 class Extraction(Base):
+    path = ""
     def setup_tab(self, parent):
 
         tk.Label(parent, text="Click \"Run\" to run all 4").grid(row=0, column=0, pady=2)
 
-        liv_button = tk.Button(parent, text="LIV Data", command=self.get_LIV_data,
+        liv_button = tk.Button(parent, text="LIV Data", command= lambda: self.get_LIV_data(self.path),
                                     bg='#2196F3', fg='white', font=('Arial', 8, 'bold'), relief='raised')
         liv_button.grid(row=1, column=0, pady=2, sticky="W")
 
-        ext_button = tk.Button(parent, text="Extinction Data", command=self.get_extinction,
+        ext_button = tk.Button(parent, text="Extinction Data", command=lambda: self.get_extinction(self.path),
                                bg='#2196F3', fg='white', font=('Arial', 8, 'bold'), relief='raised')
         ext_button.grid(row=2, column=0, pady=2, sticky="W")
 
-        spectrum_button = tk.Button(parent, text="Spectrum Data", command=self.get_spectrum_data,
+        spectrum_button = tk.Button(parent, text="Spectrum Data", command=lambda: self.get_spectrum_data(self.path),
                                     bg='#2196F3', fg='white', font=('Arial', 8, 'bold'), relief='raised')
         spectrum_button.grid(row=3, column=0, pady=2, sticky="W")
 

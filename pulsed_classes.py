@@ -56,7 +56,7 @@ class Base:
 
             # Section header (fixed at top)
             header_frame = tk.Frame(column_frame, bg=bg_color)
-            header_frame.pack(fill=tk.X, padx=8, pady=(8, 3))
+            header_frame.pack(fill='x', padx=8, pady=(8, 3))
 
             section_label = tk.Label(header_frame, text=name, font=('Arial', 10, 'bold'),
                                      bg=bg_color, fg='#333333')
