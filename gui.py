@@ -87,49 +87,45 @@ class PulsedGuiApp:
 
     def setup_control_panel(self, main_panel):
         # Compact title
-        title_label = tk.Label(main_panel, text="Pulsed LIV - EAM Control",
+        control_panel_title = tk.Label(main_panel, text="Testing Configuration",
                                font=('Arial', 12, 'bold'), bg='#f5f5f5', fg='#333333')
-        title_label.pack(pady=(0, 10))
+        control_panel_title.pack(pady=(0, 10))
 
         # --- Compact Top Controls ---
-        controls_frame = ttk.LabelFrame(main_panel, text="Configuration", padding="8")
-        controls_frame.pack(fill='x', pady=(0, 10))
-
-        # Single row layout for all controls
-        control_grid = tk.Frame(controls_frame)
-        control_grid.pack(fill='x')
+        config_frame = ttk.LabelFrame(main_panel, text="Configuration", padding="8")
+        config_frame.pack(fill='x', pady=(0, 10))
 
         # Device ID
-        tk.Label(control_grid, text="Device:", font=('Arial', 9, 'bold')) \
+        tk.Label(config_frame, text="Device:", font=('Arial', 9, 'bold')) \
             .grid(row=0, column=0, padx=(0, 5), pady=2, sticky=tk.W)
-        self.device_entry = self.create_placeholder_entry(control_grid, "W0xx_GF_0102", width=15)
+        self.device_entry = self.create_placeholder_entry(config_frame, "W0xx_GF_0102", width=15)
         self.device_entry.grid(row=0, column=1, padx=(0, 15), pady=2, sticky=tk.EW)
 
         # Temperature
-        tk.Label(control_grid, text="Temp (°C):", font=('Arial', 9, 'bold')) \
+        tk.Label(config_frame, text="Temp (°C):", font=('Arial', 9, 'bold')) \
             .grid(row=0, column=2, padx=(0, 5), pady=2, sticky=tk.W)
-        self.temp_entry = self.create_placeholder_entry(control_grid, "25", width=8)
+        self.temp_entry = self.create_placeholder_entry(config_frame, "25", width=8)
         self.temp_entry.grid(row=0, column=3, padx=(0, 15), pady=2, sticky=tk.W)
 
         # Data Path (shorter)
-        tk.Label(control_grid, text="Path:", font=('Arial', 9, 'bold')).grid(row=0, column=4, padx=(0, 5), pady=2,
+        tk.Label(config_frame, text="Path:", font=('Arial', 9, 'bold')).grid(row=0, column=4, padx=(0, 5), pady=2,
                                                                              sticky=tk.W)
         self.path_var = tk.StringVar(value="C:/Users/labaccount.ELPHIC/Documents/TX03_submount_xpt/")
-        path_entry = ttk.Entry(control_grid, textvariable=self.path_var, width=25)
+        path_entry = ttk.Entry(config_frame, textvariable=self.path_var, width=25)
         path_entry.grid(row=0, column=5, padx=(0, 5), pady=2, sticky=tk.EW)
-        browse_button = ttk.Button(control_grid, text="...", command=self.browse_path, width=3)
+        browse_button = ttk.Button(config_frame, text="...", command=self.browse_path, width=3)
         browse_button.grid(row=0, column=6, padx=(0, 15), pady=2)
 
         # Run button - smaller
-        self.run_button = tk.Button(control_grid, text="▶ Run",
+        self.run_button = tk.Button(config_frame, text="▶ Run",
                                     bg='#4CAF50', fg='white', font=('Arial', 9, 'bold'),
                                     relief='raised', bd=2, padx=15, pady=5)
         self.run_button.config(command=self.run_test_threaded)
         self.run_button.grid(row=0, column=7, padx=10, pady=2)
 
         # Configure column weights
-        control_grid.columnconfigure(1, weight=1)
-        control_grid.columnconfigure(5, weight=2)
+        config_frame.columnconfigure(1, weight=1)
+        config_frame.columnconfigure(5, weight=2)
 
         self.path_var.trace_add("write",
                                 lambda *args: setattr(self.extraction_controller, 'path', self.path_var.get()))
@@ -152,17 +148,15 @@ class PulsedGuiApp:
         ]
 
         for name, controller in tab_config:
-            tab = ttk.Frame(self.notebook, padding="50")
+            tab = ttk.Frame(self.notebook, padding="10")
             self.notebook.add(tab, text=name)
-            #self.create_param_entries(tab, params_dict, name)  # Pass name for unique var keys
-            #self.create_column_layout(tab)
             controller.setup_tab(tab)
 
     def setup_graph_panel(self, main_panel):
         # Graph panel title
-        graph_title = tk.Label(main_panel, text="Real-time Data Visualization",
-                               font=('Arial', 11, 'bold'), bg='#f5f5f5', fg='#333333')
-        graph_title.pack(pady=(0, 10))
+        graph_panel_title = tk.Label(main_panel, text="Real-time Data Visualization",
+                               font=('Arial', 12, 'bold'), bg='#f5f5f5', fg='#333333')
+        graph_panel_title.pack(pady=(0, 10))
 
         # --- Graph Controls ---
         graph_controls_frame = ttk.LabelFrame(main_panel, text="Graph Controls", padding="8")
@@ -174,7 +168,8 @@ class PulsedGuiApp:
 
         # Excel file selection (smaller)
         tk.Label(controls_grid, text="Excel:", font=('Arial', 9, 'bold')).grid(row=0, column=0, padx=(0, 5),
-                                                                               sticky=tk.W)
+                                                                               pady=9, sticky=tk.W)
+
         self.excel_path_var = tk.StringVar()
         excel_entry = ttk.Entry(controls_grid, textvariable=self.excel_path_var, width=20)
         excel_entry.grid(row=0, column=1, padx=(0, 5), sticky=tk.EW)
@@ -288,8 +283,6 @@ class PulsedGuiApp:
             y2_label = None
             y2_colour = None
             title_prefix = 'Spectrum Plot'
-            print(df[' Amplitude'])
-            print("Done")
         else:
             messagebox.showerror("Unknown Test Type",
                                  f"Could not determine test type from filename: {filename}\n"
@@ -475,5 +468,11 @@ except ImportError:
 
 root = tk.Tk()
 app = PulsedGuiApp(root)
+
+from PIL import Image, ImageTk
+ico = Image.open('inpho_logo.png')
+photo = ImageTk.PhotoImage(ico)
+root.wm_iconphoto(False, photo)
+
 root.protocol("WM_DELETE_WINDOW", app.on_closing)
 root.mainloop()

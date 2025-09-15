@@ -104,11 +104,16 @@ class Extraction(Base):
                                     bg='#2196F3', fg='white', font=('Arial', 8, 'bold'), relief='raised')
         spectrum_button.grid(row=3, column=0, pady=2, sticky="W")
 
+        org_data_button = tk.Button(parent, text="Organized Data", command=lambda: self.get_org_data(self.path),
+                                    bg='#2196F3', fg='white', font=('Arial', 8, 'bold'), relief='raised')
+        org_data_button.grid(row=4, column=0, pady=2, sticky="W")
+
     def run_test(self, data_path="", device_id="", temperature="", timestamp=""):
         print(f"Running Data Extraction at {data_path}")
         self.get_LIV_data(str(data_path))
         self.get_extinction(str(data_path))
         self.get_spectrum_data(str(data_path))
+        self.get_final_data(str(data_path))
 
     def get_LIV_data(self, input_dir):
         print("\nGetting LIV Data...")
@@ -363,3 +368,139 @@ class Extraction(Base):
             output_path = os.path.join(input_dir, f"spectrum_values_{timestamp}.xlsx")
             results_df.to_excel(output_path, index=False)
             print(f"File Saved to {output_path}")
+
+    def get_org_data(self, input_dir):
+        results = [[], [], [], [],
+                   [], [], [], []]
+
+        for filename in os.listdir(input_dir):
+            name = None
+            pd_curr = [None, None]
+            thresh = None
+            ext = None
+            bold = False
+            pkwl = None
+            smsr = None
+            date = None
+
+            if filename.endswith(".xlsx") and "_LIV_" in filename and not filename.startswith('~'):
+                # Chip Name
+                filepath = os.path.join(input_dir, filename)
+                try:
+                    match = re.search(r'[A-Za-z]{2}\d{4}', filename)
+                    if match:
+                        name = match.group()
+                except Exception as e:
+                    print(f"Error extracting chip name from {filename}: {e}")
+                    continue
+
+                # Date
+                date = extract_date_from_filename(filename)
+
+                try:
+                    df = pd.read_excel(filepath)
+
+                    # PD Current from Laser Current
+                    idx = 0
+                    for l_current in [80, 100]:
+                        row = df[df['SMU1_Ch2_Laser_Current_Set_mA'] == l_current]
+                        if not row.empty:
+                            pd_curr[idx] = row['SMU1_Ch1_PD_Current_Meas_mA'].iloc[0]
+                        else:
+                            print(f"No Data found for Laser {l_current} mA in {filename}")
+                        idx += 1
+
+                    # Intercept
+                    filtered_df = df[(df['SMU1_Ch2_Laser_Current_Set_mA'] >= 30) &
+                                     (df['SMU1_Ch2_Laser_Current_Set_mA'] <= 50)]
+
+                    if not filtered_df.empty and len(filtered_df) >= 2:  # Need at least 2 points for regression
+                        x_data = filtered_df['SMU1_Ch2_Laser_Current_Set_mA']
+                        y_data = filtered_df['SMU1_Ch1_PD_Current_Meas_mA']
+
+                        # Perform linear regression using our custom function
+                        slope, intercept, r_value, p_value, std_err = linear_regression(x_data, y_data)
+
+                        if slope != 0:  # Avoid division by zero
+                            thresh = -intercept / slope
+                        else:
+                            print(
+                                f"  Warning: Slope is zero for laser current intercept calculation in {filename}. Intercept cannot be determined.")
+                    else:
+                        print(
+                            f"  Warning: Not enough data points (30-50mA Laser Current) for intercept calculation in {filename}")
+
+                except FileNotFoundError:
+                    print(f"Error: File not found - {filepath}")
+                except KeyError as e:
+                    print(f"Error: Missing expected column '{e}' in file {filename}. Please check column names.")
+                except Exception as e:
+                    print(f"An unexpected error occurred while processing {filename}: {e}")
+
+                for filename in os.listdir(input_dir):
+
+                    if filename.endswith(".xlsx") and "_EAM_" in filename and not filename.startswith(
+                            '~') and name in filename:
+                        ext_val = None
+                        file_path = os.path.join(input_dir, filename)
+                        df = pd.read_excel(file_path)
+                        ext_i = df.iat[1, 5]
+                        ext_f = df.iat[31, 5]
+
+                        if pd.notna(ext_i) and pd.notna(ext_f):
+                            numer = abs(ext_f)
+                            denom = abs(ext_i)
+
+                            # Determine if subtraction should occur
+                            if numer > 0.111 and denom > 0.111:
+                                numer -= 0.111
+                                denom -= 0.111
+                            else:
+                                bold = True
+
+                            # Attempt to calculate ext value
+                            if denom != 0 and numer > 0:
+                                ext_val = 10 * math.log10(numer / denom)
+
+                            else:
+                                print("Math Error")
+                                ext_val = f"{ext_i},{ext_f}"
+
+                        else:
+                            print(f"Error: Unsuccessful Extraction of PD Current Values: {filename}")
+
+                        if "LDBias(80)" in filename or "80mA" in filename:
+                            ext = ext_val
+
+                for filename in os.listdir(input_dir):
+                    if filename.endswith(
+                            ".csv") and "pkpow_pkwl_smsr_" in filename and name in filename and not filename.startswith(
+                            '~'):
+                        df = pd.read_csv(os.path.join(input_dir, filename))
+                        pkwl = df.iat[0, 1]
+                        smsr = df.iat[0, 7]
+
+                results[0].append(name)
+                results[1].append(thresh)
+                results[2].append(pd_curr[0])
+                results[3].append(pd_curr[1])
+                results[4].append(ext)
+                results[5].append(pkwl)
+                results[6].append(smsr)
+                results[7].append(date)
+
+        results_df = pd.DataFrame({
+            "Chip Name": results[0],
+            "Threshold": results[1],
+            "PD Current 80mA": results[2],
+            "PD Current 100mA": results[3],
+            "Extinction": results[4],
+            "pkwl": results[5],
+            "smsr": results[6],
+            "Date": results[7]
+        })
+
+        if not results_df.empty:
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            output_path = os.path.join(input_dir, f"final_values_{timestamp}.xlsx")
+            results_df.to_excel(output_path, index=False)

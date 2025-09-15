@@ -12,7 +12,6 @@ import sys
 
 class Base:
     def __init__(self, smu_resources):
-        print('Base Test Class Initialized')
         self.smu_resources1_addr = smu_resources['smu1']
         self.smu_resources2_addr = smu_resources['smu2']
         self.smu1 = None
