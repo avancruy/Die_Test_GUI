@@ -98,13 +98,13 @@ class PulsedGuiApp:
         # Device ID
         tk.Label(config_frame, text="Device:", font=('Arial', 9, 'bold')) \
             .grid(row=0, column=0, padx=(0, 5), pady=2, sticky=tk.W)
-        self.device_entry = self.create_placeholder_entry(config_frame, "W0xx_GF_0102", width=15)
+        self.device_entry = self.create_placeholder_entry(config_frame, "e.g., AA1234", width=15)
         self.device_entry.grid(row=0, column=1, padx=(0, 15), pady=2, sticky=tk.EW)
 
         # Temperature
         tk.Label(config_frame, text="Temp (°C):", font=('Arial', 9, 'bold')) \
             .grid(row=0, column=2, padx=(0, 5), pady=2, sticky=tk.W)
-        self.temp_entry = self.create_placeholder_entry(config_frame, "25", width=8)
+        self.temp_entry = self.create_placeholder_entry(config_frame, "55", width=8)
         self.temp_entry.grid(row=0, column=3, padx=(0, 15), pady=2, sticky=tk.W)
 
         # Data Path (shorter)
@@ -393,12 +393,10 @@ class PulsedGuiApp:
 
         self.update_status(f"Running {self.curr_controller.name} test...", "#4682b4")
         device_id = self.device_entry.get()
-        if device_id == "e.g., W0xx_GF_0102" or device_id == "W0xx_GF_0102":  # Accommodate placeholder
+        if device_id == "e.g., AA1234":  # Accommodate placeholder
             device_id = ""
 
         temperature = self.temp_entry.get()
-        if temperature == "e.g., 25" or temperature == "25":  # Accommodate placeholder
-            temperature = ""
 
         # Validate temperature if entered
         if temperature:
