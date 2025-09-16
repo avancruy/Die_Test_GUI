@@ -104,7 +104,7 @@ class Extraction(Base):
                                     bg='#2196F3', fg='white', font=('Arial', 8, 'bold'), relief='raised')
         spectrum_button.grid(row=3, column=0, pady=2, sticky="W")
 
-        org_data_button = tk.Button(parent, text="Organized Data", command=lambda: self.get_org_data(self.path),
+        org_data_button = tk.Button(parent, text="Organized Data", command=lambda: self.get_organized_data(self.path),
                                     bg='#2196F3', fg='white', font=('Arial', 8, 'bold'), relief='raised')
         org_data_button.grid(row=4, column=0, pady=2, sticky="W")
 
@@ -369,7 +369,7 @@ class Extraction(Base):
             results_df.to_excel(output_path, index=False)
             print(f"File Saved to {output_path}")
 
-    def get_org_data(self, input_dir):
+    def get_organized_data(self, input_dir):
         results = [[], [], [], [],
                    [], [], [], []]
 
@@ -472,6 +472,8 @@ class Extraction(Base):
                         if "LDBias(80)" in filename or "80mA" in filename:
                             ext = ext_val
 
+                        break
+
                 for filename in os.listdir(input_dir):
                     if filename.endswith(
                             ".csv") and "pkpow_pkwl_smsr_" in filename and name in filename and not filename.startswith(
@@ -479,6 +481,8 @@ class Extraction(Base):
                         df = pd.read_csv(os.path.join(input_dir, filename))
                         pkwl = df.iat[0, 1]
                         smsr = df.iat[0, 7]
+
+                        break
 
                 results[0].append(name)
                 results[1].append(thresh)

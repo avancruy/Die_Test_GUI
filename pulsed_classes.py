@@ -533,7 +533,7 @@ class Spectrum(Base):
         }
 
         self.param_sets = [
-            ("Spectrum", self.params_spectrum, '#e8f4fd'),
+            ("Spectrum", self.params_spectrum, '#CBC3E3'),
         ]
 
     # override of run_test function to run spectrum test
