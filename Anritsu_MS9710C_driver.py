@@ -125,9 +125,16 @@ class AnritsuMS9710CDriver:
         # read peak
         return self.query("TMK?")  # reads wavelength at trace marker location
 
-    # returns side mode supression ratio
+    # returns side mode suppression ratio
     def getSMSR(self):
-        return self.query("ANA?")
+        self.write("ANA SMSR, 2NDPEAK")
+
+        # replace code below with check for opration complete using *OPC? or event register 2?
+        print("Searching for SMSR... please wait...")
+        delay(30000)
+        print("Search complete.")
+
+        return self.query("ANAR?")
 
     # method to center peak value on OSA
     def setPeakToCenter(self):
@@ -137,5 +144,4 @@ class AnritsuMS9710CDriver:
     def close(self):
         self.osa.close()
 
-        # send commands to perform functions
-        # receive data back
+
