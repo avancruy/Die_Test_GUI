@@ -2,9 +2,6 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import threading
 from datetime import datetime
-import os
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import matplotlib
 from utils import *
 from data_extraction import Extraction
@@ -32,7 +29,6 @@ class PulsedGuiApp:
         self.spectrum_controller = Spectrum(smu_resources)
         self.extraction_controller = Extraction(smu_resources)
         self.curr_controller = self.liv_controller
-        #self.param_vars = {}  # To store Tkinter variables for parameters
         self.sync_in_progress = False  # Flag to prevent infinite sync loops
 
         # Graphing related variables
@@ -62,11 +58,7 @@ class PulsedGuiApp:
         directory = filedialog.askdirectory()
         if directory:
             self.path_var.set(directory.replace("\\", "/") + "/")
-            self.liv_controller.path = directory
-            self.eam_controller.path = directory
-            self.spectrum_controller.path = directory
             self.extraction_controller.path = directory
-
 
     def setup_gui(self):
         # Create main horizontal paned window
@@ -82,7 +74,6 @@ class PulsedGuiApp:
         main_paned.add(right_panel, weight=3)
 
         self.setup_control_panel(left_panel)
-        #self.setup_graph_panel(right_panel)
         self.graph_panel.setup_graph_panel(right_panel)
 
     def setup_control_panel(self, main_panel):
@@ -151,7 +142,6 @@ class PulsedGuiApp:
             tab = ttk.Frame(self.notebook, padding="10")
             self.notebook.add(tab, text=name)
             controller.setup_tab(tab)
-
 
     def update_status(self, message, color="#333333"):
         """Update the status display with a message and color"""
@@ -250,18 +240,19 @@ class PulsedGuiApp:
 
 # main----------------------------------------------------
 try:
-    from pulsed_classes import LIV, EAM, Spectrum
+    from test_classes import LIV, EAM, Spectrum
+
+    root = tk.Tk()
+    app = PulsedGuiApp(root)
+
+    from PIL import Image, ImageTk
+
+    ico = Image.open('inpho_logo.png')
+    photo = ImageTk.PhotoImage(ico)
+    root.wm_iconphoto(False, photo)
+
+    root.protocol("WM_DELETE_WINDOW", app.on_closing)
+    root.mainloop()
 except ImportError:
-    print("Error: 'pulsed_classes.py' not found")
-    exit()
+    print("Error: 'test_classes.py' not found")
 
-root = tk.Tk()
-app = PulsedGuiApp(root)
-
-from PIL import Image, ImageTk
-ico = Image.open('inpho_logo.png')
-photo = ImageTk.PhotoImage(ico)
-root.wm_iconphoto(False, photo)
-
-root.protocol("WM_DELETE_WINDOW", app.on_closing)
-root.mainloop()

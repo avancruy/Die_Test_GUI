@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
-class GraphPanel():
+class GraphPanel:
     def __init__(self):
         self.current_excel_file = None
         self.fig = None
