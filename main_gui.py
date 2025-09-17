@@ -109,7 +109,7 @@ class PulsedGuiApp:
 
         # Run button - smaller
         self.run_button = tk.Button(config_frame, text="▶ Run",
-                                    bg='#4CAF50', fg='white', font=('Arial', 9, 'bold'),
+                                    bg='#4CAF50', fg='white', font=('Verdana', 9, 'bold'),
                                     relief='raised', bd=2, padx=15, pady=5)
         self.run_button.config(command=self.run_test_threaded)
         self.run_button.grid(row=0, column=7, padx=10, pady=2)

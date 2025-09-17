@@ -40,11 +40,11 @@ class GraphPanel:
 
         # Plot and clear buttons
         plot_button = tk.Button(controls_grid, text="📊 Plot", command=self.plot_excel_data,
-                                bg='#2196F3', fg='white', font=('Arial', 8, 'bold'), relief='raised', bd=1)
-        plot_button.grid(row=0, column=3, padx=(0, 5))
+                                bg='#2196F3', fg='white', font=('Impact', 8, 'normal'), relief='raised', bd=1)
+        plot_button.grid(row=0, column=3, padx=(10, 10))
 
         clear_button = tk.Button(controls_grid, text="🗑 Clear", command=self.clear_plot,
-                                 bg='#FF5722', fg='white', font=('Arial', 8, 'bold'), relief='raised', bd=1)
+                                 bg='#FF5722', fg='white', font=('Impact', 8, 'normal'), relief='raised', bd=1)
         clear_button.grid(row=0, column=4, padx=(0, 10))
 
         # Auto-plot checkbox
