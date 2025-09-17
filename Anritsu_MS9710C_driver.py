@@ -1,6 +1,7 @@
 from turtle import delay
 
 import pyvisa
+from fontTools.varLib.models import nonNone
 
 
 # # connect to OSA
@@ -139,6 +140,23 @@ class AnritsuMS9710CDriver:
     # method to center peak value on OSA
     def setPeakToCenter(self):
         self.setCenter(self.getPeakWavelength())
+
+    # activates a specific trace (options are 'A' or 'B')
+    def activateTrace(self, trace):
+        if trace != "A" and trace != "B":
+                print("ERROR: Invalid trace selection. Options: 'A' or 'B'.")
+        else:
+            self.write("TSL" + trace)
+
+    # returns name of the active trace
+    def getActiveTrace(self):
+        return self.query("TSL?")
+
+
+    # returns x and y values of datapoints from OSA sweep
+    def getTraceVals(self):
+        pass
+
 
     # method to close connection with OSA
     def close(self):
