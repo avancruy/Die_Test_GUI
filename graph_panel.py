@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
-class GraphPanel():
+class GraphPanel:
     def __init__(self):
         self.current_excel_file = None
         self.fig = None
@@ -208,17 +208,16 @@ class GraphPanel():
         self.canvas.draw()
         self.update_status("Plot cleared", "#333333")
 
-    def find_latest_excel_file(self):
+    def find_latest_excel_file(self, path):
         """Find the most recent Excel file in the data path"""
         try:
-            data_path = self.path_var.get()
-            if not os.path.exists(data_path):
+            if not os.path.exists(path):
                 return None
 
             excel_files = []
-            for file in os.listdir(data_path):
+            for file in os.listdir(path):
                 if file.endswith(('.xlsx', '.xls', '.csv')):
-                    file_path = os.path.join(data_path, file)
+                    file_path = os.path.join(path, file)
                     excel_files.append((file_path, os.path.getmtime(file_path)))
 
             if excel_files:

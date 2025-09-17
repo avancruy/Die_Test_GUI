@@ -6,7 +6,7 @@ import math
 from datetime import datetime
 from openpyxl.styles import Font
 import numpy as np
-from pulsed_classes import Base
+from test_classes import Base
 
 def linear_regression(x, y):
     """
@@ -113,7 +113,7 @@ class Extraction(Base):
         self.get_LIV_data(str(data_path))
         self.get_extinction(str(data_path))
         self.get_spectrum_data(str(data_path))
-        self.get_final_data(str(data_path))
+        self.get_organized_data(str(data_path))
 
     def get_LIV_data(self, input_dir):
         print("\nGetting LIV Data...")
@@ -327,7 +327,6 @@ class Extraction(Base):
                     print(f"Error extracting chip name from {filename}: {e}")
                     continue
 
-        all_columns = set()
         chip_found = False
         spectrum_data = [[], [], [], [], [],
                          [], [], [], []]
@@ -437,12 +436,12 @@ class Extraction(Base):
                 except Exception as e:
                     print(f"An unexpected error occurred while processing {filename}: {e}")
 
-                for filename in os.listdir(input_dir):
+                for filename_2nd in os.listdir(input_dir):
 
-                    if filename.endswith(".xlsx") and "_EAM_" in filename and not filename.startswith(
-                            '~') and name in filename:
+                    if filename_2nd.endswith(".xlsx") and "_EAM_" in filename_2nd and not filename_2nd.startswith(
+                            '~') and name in filename_2nd:
                         ext_val = None
-                        file_path = os.path.join(input_dir, filename)
+                        file_path = os.path.join(input_dir, filename_2nd)
                         df = pd.read_excel(file_path)
                         ext_i = df.iat[1, 5]
                         ext_f = df.iat[31, 5]
@@ -467,18 +466,18 @@ class Extraction(Base):
                                 ext_val = f"{ext_i},{ext_f}"
 
                         else:
-                            print(f"Error: Unsuccessful Extraction of PD Current Values: {filename}")
+                            print(f"Error: Unsuccessful Extraction of PD Current Values: {filename_2nd}")
 
-                        if "LDBias(80)" in filename or "80mA" in filename:
+                        if "LDBias(80)" in filename_2nd or "80mA" in filename_2nd:
                             ext = ext_val
 
                         break
 
-                for filename in os.listdir(input_dir):
-                    if filename.endswith(
-                            ".csv") and "pkpow_pkwl_smsr_" in filename and name in filename and not filename.startswith(
+                for filename_2nd in os.listdir(input_dir):
+                    if filename_2nd.endswith(
+                            ".csv") and "pkpow_pkwl_smsr_" in filename_2nd and name in filename_2nd and not filename_2nd.startswith(
                             '~'):
-                        df = pd.read_csv(os.path.join(input_dir, filename))
+                        df = pd.read_csv(os.path.join(input_dir, filename_2nd))
                         pkwl = df.iat[0, 1]
                         smsr = df.iat[0, 7]
 

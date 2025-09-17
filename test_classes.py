@@ -8,6 +8,8 @@ from datetime import datetime
 import os
 import numpy as np
 import sys
+from new_KeysightB2912A import KeysightB2912A
+import pyvisa
 
 
 class Base:
@@ -18,16 +20,14 @@ class Base:
         self.smu2 = None
 
         self.name = "Base"
+
+        self.PARAM_METADATA = {}
         self.params_photodetector = {}
         self.params_laser = {}
         self.params_eam = {}
         self.params_spectrum = {}
 
-        self.param_sets = [
-            ("Photodetector (SMU1 Ch1)", self.params_photodetector, '#e8f4fd'),
-            ("Laser (SMU1 Ch2)", self.params_laser, '#fff2e8'),
-            ("EAM (SMU2 Ch1)", self.params_eam, '#f0f8e8')
-        ]
+        self.param_sets = []
 
         self.param_vars = {}
         self.sync_in_progress = False
@@ -540,7 +540,6 @@ class Spectrum(Base):
     def run_test(self, data_path="", device_id="", temperature="", timestamp=""):
 
         #connecting to SMU1 only (both channels) for spectrum test
-        from KeysightB2912A import KeysightB2912A
 
         smu = KeysightB2912A('TCPIP0::10.20.0.231::hislip0::INSTR')  # Replace with your actual IP
         smu.get_idn()
