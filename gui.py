@@ -224,10 +224,10 @@ class PulsedGuiApp:
 
             # Auto-plot if enabled
             if self.graph_panel.auto_plot_var.get() and self.curr_controller is not self.extraction_controller:
-                latest_file = self.graph_panel.find_latest_excel_file()
+                latest_file = self.graph_panel.find_latest_excel_file(self.path_var.get())
                 if latest_file:
                     self.graph_panel.clear_plot()
-                    self.root.after(0, lambda: self.graph_panel_excel_path_var.set(latest_file))
+                    self.root.after(0, lambda: self.graph_panel.excel_path_var.set(latest_file))
                     self.root.after(0, self.graph_panel.plot_excel_data)
                 else:
                     self.root.after(0, lambda: self.update_status("Test complete. No Excel file found to auto-plot.",
