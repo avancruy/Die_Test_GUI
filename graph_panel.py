@@ -6,21 +6,24 @@ import pandas as pd
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
 class GraphPanel:
-    def __init__(self):
+    def __init__(self, root):
+        self.root = root
         self.current_excel_file = None
         self.fig = None
         self.canvas = None
         self.toolbar = None
         self.excel_path_var = None
 
-    def setup_graph_panel(self, main_panel):
+        self.setup_graph_panel()
+
+    def setup_graph_panel(self):
         # Graph panel title
-        graph_panel_title = tk.Label(main_panel, text="Real-time Data Visualization",
+        graph_panel_title = tk.Label(self.root, text="Real-time Data Visualization",
                                font=('Arial', 12, 'bold'), bg='#f5f5f5', fg='#333333')
         graph_panel_title.pack(pady=(0, 10))
 
         # --- Graph Controls ---
-        graph_controls_frame = ttk.LabelFrame(main_panel, text="Graph Controls", padding="8")
+        graph_controls_frame = ttk.LabelFrame(self.root, text="Graph Controls", padding="8")
         graph_controls_frame.pack(fill='x', pady=(0, 10))
 
         # Compact controls layout
@@ -56,12 +59,12 @@ class GraphPanel:
 
         # --- Compact Status Display ---
         self.graph_status_var = tk.StringVar(value="Ready")
-        self.graph_status = tk.Label(main_panel, textvariable=self.graph_status_var,
+        self.graph_status = tk.Label(self.root, textvariable=self.graph_status_var,
                                 font=('Arial', 10, 'bold'), fg='#333333', bg='#f5f5f5')
         self.graph_status.pack(pady=(0, 10))
 
         # --- Graph Display Area ---
-        graph_display_frame = ttk.LabelFrame(main_panel, text="Live Graph", padding="5")
+        graph_display_frame = ttk.LabelFrame(self.root, text="Live Graph", padding="5")
         graph_display_frame.pack(expand=True, fill='both')
 
         # Initialize matplotlib figure with smaller size for side panel
@@ -231,6 +234,11 @@ class GraphPanel:
 
     def update_status(self, message, color="#333333"):
         """Update the status display with a message and color"""
-        print("Status: " + message)
         self.graph_status_var.set(message)
         self.graph_status.configure(fg=color)
+
+
+if __name__ == '__main__':
+    root = tk.Tk()
+    graph_panel = GraphPanel(root)
+    root.mainloop()

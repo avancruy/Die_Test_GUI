@@ -13,9 +13,9 @@ import pyvisa
 
 
 class Base:
-    def __init__(self, smu_resources):
-        self.smu_resources1_addr = smu_resources['smu1']
-        self.smu_resources2_addr = smu_resources['smu2']
+    def __init__(self):
+        self.smu_resources1_addr = None
+        self.smu_resources2_addr = None
         self.smu1 = None
         self.smu2 = None
 
@@ -382,7 +382,11 @@ class Base:
 
 class EAM(Base):
     def __init__(self, smu_resources):
-        super().__init__(smu_resources)
+        super().__init__()
+        self.smu_resources1_addr = smu_resources['smu1']
+        self.smu_resources2_addr = smu_resources['smu2']
+        self.smu1 = None
+        self.smu2 = None
 
         self.name = "EAM"
 
@@ -442,7 +446,11 @@ class EAM(Base):
 
 class LIV(Base):
     def __init__(self, smu_resources):
-        super().__init__(smu_resources)
+        super().__init__()
+        self.smu_resources1_addr = smu_resources['smu1']
+        self.smu_resources2_addr = smu_resources['smu2']
+        self.smu1 = None
+        self.smu2 = None
 
         self.name = "LIV"
 
@@ -502,7 +510,11 @@ class LIV(Base):
 
 class Spectrum(Base):
     def __init__(self, smu_resources):
-        super().__init__(smu_resources)
+        super().__init__()
+        self.smu_resources1_addr = smu_resources['smu1']
+        self.smu_resources2_addr = smu_resources['smu2']
+        self.smu1 = None
+        self.smu2 = None
 
         self.name = "Spectrum"
 

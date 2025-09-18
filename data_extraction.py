@@ -213,6 +213,7 @@ class Extraction(Base):
     def get_extinction(self, input_dir):
         print("\nGetting Extinction Data...")
         if not os.path.isdir(input_dir):
+            print(f"Error: Folder {input_dir} not found")
             return
 
         chip_names = []
@@ -310,6 +311,7 @@ class Extraction(Base):
     def get_spectrum_data(self, input_dir):
         print("\nGetting Spectrum Data...")
         if not os.path.isdir(input_dir):
+            print(f"Error: Folder {input_dir} not found")
             return
 
         required_string = "pkpow_pkwl_smsr_"
@@ -369,6 +371,10 @@ class Extraction(Base):
             print(f"File Saved to {output_path}")
 
     def get_organized_data(self, input_dir):
+        print("\nGetting Organized Data...")
+        if not os.path.isdir(input_dir):
+            print(f"Error: Folder {input_dir} not found")
+            return
         results = [[], [], [], [],
                    [], [], [], []]
 
@@ -507,3 +513,13 @@ class Extraction(Base):
             timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             output_path = os.path.join(input_dir, f"final_values_{timestamp}.xlsx")
             results_df.to_excel(output_path, index=False)
+            print(f"File Saved to {output_path}")
+
+if __name__ == "__main__":
+    from tkinter import filedialog
+    extraction = Extraction()
+    folder = filedialog.askdirectory()
+    extraction.get_LIV_data(folder)
+    extraction.get_extinction(folder)
+    extraction.get_spectrum_data(folder)
+    extraction.get_organized_data(folder)

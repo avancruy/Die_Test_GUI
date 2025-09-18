@@ -27,13 +27,13 @@ class PulsedGuiApp:
         self.liv_controller = LIV(smu_resources)
         self.eam_controller = EAM(smu_resources)
         self.spectrum_controller = Spectrum(smu_resources)
-        self.extraction_controller = Extraction(smu_resources)
+        self.extraction_controller = Extraction()
         self.curr_controller = self.liv_controller
         self.sync_in_progress = False  # Flag to prevent infinite sync loops
 
         # Graphing related variables
 
-        self.graph_panel = GraphPanel()
+        self.graph_panel = None
 
         self.setup_gui()
 
@@ -74,7 +74,7 @@ class PulsedGuiApp:
         main_paned.add(right_panel, weight=3)
 
         self.setup_control_panel(left_panel)
-        self.graph_panel.setup_graph_panel(right_panel)
+        self.graph_panel = GraphPanel(right_panel)
 
     def setup_control_panel(self, main_panel):
         # Compact title
@@ -236,6 +236,7 @@ class PulsedGuiApp:
         if messagebox.askokcancel("Quit", "Do you want to quit? This will close SMU connections if active."):
             print("Closing application, ensuring SMUs are closed...")
             self.curr_controller.close_smus()
+            self.root.quit()
             self.root.destroy()
 
 # main----------------------------------------------------
