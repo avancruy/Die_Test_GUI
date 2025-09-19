@@ -172,6 +172,7 @@ class PulsedGuiApp:
             return
 
         self.update_status(f"Running {self.curr_controller.name} test...", "#4682b4")
+        print(self.status_var.get())
         device_id = self.device_entry.get()
         if device_id == "e.g., AA1234":  # Accommodate placeholder
             device_id = ""

@@ -51,7 +51,7 @@ class Base:
         columns_container.pack(expand=True, fill="both")
 
         # Create three columns with individual scrollbars
-        for i, (name, params_dict, bg_color) in enumerate(self.param_sets):
+        for i, (name, param_type, params_dict, bg_color) in enumerate(self.param_sets):
             # Create column frame
             column_frame = tk.Frame(columns_container, bg=bg_color, relief='solid', bd=1)
             column_frame.grid(row=0, column=i, padx=5, pady=5, sticky='nsew')
@@ -88,17 +88,17 @@ class Base:
             canvas.bind("<Leave>", lambda e, c=canvas: c.unbind_all("<MouseWheel>"))
 
             # Create parameters in the scrollable frame
-            self.create_param_entries_vertical(scrollable_frame, params_dict, name, bg_color)
+            self.create_param_entries_vertical(scrollable_frame, param_type, params_dict, name, bg_color)
 
         # Configure column weights for equal distribution
         for i in range(3):
             columns_container.columnconfigure(i, weight=1)
         columns_container.rowconfigure(0, weight=1)
 
-    def create_param_entries_vertical(self, parent, params_dict_ref, param_set_name, bg_color):
+    def create_param_entries_vertical(self, parent, param_type_ref, params_dict_ref, param_set_name, bg_color):
         row_idx = 0
 
-        for key, (label_text, data_type, options) in self.PARAM_METADATA.items():
+        for key, (label_text, data_type, options) in param_type_ref.items():
             if key not in params_dict_ref:
                 if key == "smu_channel":  # Show SMU channel as non-editable
                     label_frame = tk.Frame(parent, bg=bg_color)
@@ -442,9 +442,9 @@ class EAM(Base):
         }
 
         self.param_sets = [
-            ("Photodetector (SMU1 Ch1)", self.params_photodetector, '#e8f4fd'),
-            ("Laser (SMU1 Ch2)", self.params_laser, '#fff2e8'),
-            ("EAM (SMU2 Ch1)", self.params_eam, '#f0f8e8')
+            ("Photodetector (SMU1 Ch1)", self.PARAM_METADATA, self.params_photodetector, '#e8f4fd'),
+            ("Laser (SMU1 Ch2)", self.PARAM_METADATA, self.params_laser, '#fff2e8'),
+            ("EAM (SMU2 Ch1)", self.PARAM_METADATA, self.params_eam, '#f0f8e8')
         ]
 
 class LIV(Base):
@@ -506,9 +506,9 @@ class LIV(Base):
         }
 
         self.param_sets = [
-            ("Photodetector (SMU1 Ch1)", self.params_photodetector, '#e8f4fd'),
-            ("Laser (SMU1 Ch2)", self.params_laser, '#fff2e8'),
-            ("EAM (SMU2 Ch1)", self.params_eam, '#f0f8e8')
+            ("Photodetector (SMU1 Ch1)", self.PARAM_METADATA, self.params_photodetector, '#e8f4fd'),
+            ("Laser (SMU1 Ch2)", self.PARAM_METADATA, self.params_laser, '#fff2e8'),
+            ("EAM (SMU2 Ch1)", self.PARAM_METADATA, self.params_eam, '#f0f8e8')
         ]
 
 class Spectrum(Base):
@@ -521,34 +521,40 @@ class Spectrum(Base):
 
         self.name = "Spectrum"
 
-        self.PARAM_METADATA = {
+        self.PARAM_LASER_METADATA = {
+            "smu_ip_addr": ("SMU IP Address", str, None),
             "source_func1": ("Channel 1 Mode", str, [("Voltage(V)", "VOLT"), ("Current(A)", "CURR")]),
             "smu_channel1_source": ("Channel 1 Source (A)", float, None),
             "smu_channel1_limit": ("Channel 1 limit", float, None),
 
             "source_func2": ("Channel 2 Mode", str, [("Voltage(V)", "VOLT"), ("Current(A)", "CURR")]),
             "smu_channel2_source": ("Channel 2 Source (V)", float, None),
-            "smu_channel2_limit": ("Channel 2 limit", float, None),
+            "smu_channel2_limit": ("Channel 2 limit", float, None)
+        }
 
-            "centre": ("Centre", float, None), #center x-value (wavelength) of plot
+        self.PARAM_SPECTRUM_METADATA = {
+            "osa_addr": ("OSA Address", str, None),
+            "centre": ("Centre", float, None),
             "span": ("Span", float, None),
             "res": ("Resolution", float, None),
             "sens": ("Sensitivity", str, None),
             "avg": ("Average", float, None),
-            "ref_val": ("Reference Level", float, None),
-
-            "OSA_addr": ("OSA Address", str, None),
-            "smu_ip_addr": ("SMU IP Address", str, None)
+            "ref_val": ("Reference Level", float, None)
         }
-        self.params_spectrum = { # SMU 1 Channels 1 & 2, OSA
-            "source_func1": "VOLT", "smu_channel1_source": -2, "smu_channel1_limit": 0.02,
-            "source_func2": "CURR", "smu_channel2_source": 0.08, "smu_channel2_limit": 2.5,
-            "centre": 1310, "span": 12, "res": 0.02, "sens": 'High1', "avg": 1, "ref_val": -20,
-            "OSA_addr": "10.20.0.199", "smu_ip_addr": "10.20.0.231"
+
+        self.params_laser = {
+            "smu_ip_addr": "10.20.0.231", "source_func1": "VOLT", "smu_channel1_source": -2, "smu_channel1_limit": 0.02,
+            "source_func2": "CURR", "smu_channel2_source": 0.08, "smu_channel2_limit": 2.5
+        }
+
+        self.params_spectrum = {
+            "osa_addr": "10.20.0.199", "centre": 1310, "span": 12,
+            "res": 0.02, "sens": 'High1', "avg": 1, "ref_val": -20
         }
 
         self.param_sets = [
-            ("Spectrum", self.params_spectrum, '#CBC3E3'),
+            ("Laser (SMU1 Ch2)", self.PARAM_LASER_METADATA, self.params_laser, '#fff2e8'),
+            ("Spectrum (OSA)", self.PARAM_SPECTRUM_METADATA, self.params_spectrum, '#CBC3E3'),
         ]
 
     # override of run_test function to run spectrum test
@@ -559,41 +565,41 @@ class Spectrum(Base):
         smu = KeysightB2912A('TCPIP0::10.20.0.231::hislip0::INSTR')  # Replace with your actual IP
         smu.get_idn()
 
-        smu.set_mode(1, self.params_spectrum['source_func1'])
-        if self.params_spectrum['source_func1'] == 'CURR':
-            smu.set_current(1, self.params_spectrum['smu_channel1_source'])
+        smu.set_mode(1, self.params_laser['source_func1'])
+        if self.params_laser['source_func1'] == 'CURR':
+            smu.set_current(1, self.params_laser['smu_channel1_source'])
         #the else condition is what should always occur when running spectrum test, so why is there a condition at all? -Matthew
         else:
-            smu.set_voltage(1, self.params_spectrum['smu_channel1_source'])
+            smu.set_voltage(1, self.params_laser['smu_channel1_source'])
         # smu.set_current_limit(data[1][2])
         smu.set_autorange(1)
         smu.output_on(1)
-        if self.params_spectrum['source_func1'] == 'CURR':
+        if self.params_laser['source_func1'] == 'CURR':
             out1 = smu.read_voltage(1)
         else:
             out1 = smu.read_current(1)
-        print(f"Applied {self.params_spectrum['source_func1']}: {self.params_spectrum['smu_channel1_source']}, Measured: {out1}V")
+        print(f"Applied {self.params_laser['source_func1']}: {self.params_laser['smu_channel1_source']}, Measured: {out1}V")
 
-        smu.set_mode(2, self.params_spectrum['source_func2'])
-        if self.params_spectrum['source_func2'] == 'CURR':
-            smu.set_current(2, self.params_spectrum['smu_channel2_source'])
+        smu.set_mode(2, self.params_laser['source_func2'])
+        if self.params_laser['source_func2'] == 'CURR':
+            smu.set_current(2, self.params_laser['smu_channel2_source'])
         else:
-            smu.set_voltage(2, self.params_spectrum['smu_channel2_source'])
+            smu.set_voltage(2, self.params_laser['smu_channel2_source'])
         # smu.set_current_limit(data[1][2])
         smu.set_autorange(2)
         smu.output_on(2)
-        if self.params_spectrum['source_func2'] == 'CURR':
+        if self.params_laser['source_func2'] == 'CURR':
             out2 = smu.read_voltage(2)
         else:
             out2 = smu.read_current(2)
-        print(f"Applied {self.params_spectrum['source_func2']}: {self.params_spectrum['smu_channel2_source']}, Measured Current: {out2}A")
+        print(f"Applied {self.params_laser['source_func2']}: {self.params_laser['smu_channel2_source']}, Measured Current: {out2}A")
 
 
         current_timestamp = timestamp or datetime.now().strftime("%Y%m%dT%H%M%S")
 
         #library for optical spectrum analyzer
         from AQ6370Controls import AQ6370Controls
-        osa = AQ6370Controls(self.params_spectrum['OSA_addr'])
+        osa = AQ6370Controls(self.params_spectrum['osa_addr'])
         osaBusy = threading.Event()  # OSA Busy Event
 
         """connect_to_osa: Retrieves inputs and tries to connect to OSA
@@ -604,7 +610,7 @@ class Spectrum(Base):
             print("OSA busy. Exiting function")
 
         osaBusy.set()  # Set event osaBusy
-        osa.setAddress(self.params_spectrum['OSA_addr'])  # connect to OSA through IP address
+        osa.setAddress(self.params_spectrum['osa_addr'])  # connect to OSA through IP address
 
         try:
             # write_text_box(textbox, 'Connecting to OSA')
@@ -644,8 +650,10 @@ class Spectrum(Base):
         """Saves sweep data in Excel sheet
             Does not save sweep data if OSA is not connected or is busy
         """
-
-        data_file_name = str(device_id) + "_" +str(temperature)+ "C" + "_" + str("80mA")
+        common_prefix = f"{device_id}_" if device_id else ""
+        ld_bias = spectrum_params["smu_channel2_source"]
+        common_suffix = f"Spectrum_LDBias({ld_bias})mA_{temperature}°C_{timestamp}"
+        plot_file_name = f"{common_prefix}_{common_suffix}"
 
         if not osa.connected:
             print("OSA Not Connected Error")
@@ -663,22 +671,22 @@ class Spectrum(Base):
         ax1.set_title('Amplitude vs wavelength')
         plt.grid(True)
 
-        file_name = f'{data_file_name}_{timestamp}.jpg'
-        file_path = os.path.join(data_path, file_name)
+        image_file_name = f'{plot_file_name}.jpg'
+        image_file_path = os.path.join(data_path, image_file_name)
 
-        csvfile_name = f'{data_file_name}_Spectrum_{timestamp}.csv'
-        csvfile_path = os.path.join(data_path, csvfile_name)
-        np.savetxt(csvfile_path, np.transpose([xvals, yvals]), delimiter=',', header='Freq, Amplitude',
+        csv_file_name = f'{plot_file_name}.csv'
+        csv_file_path = os.path.join(data_path, csv_file_name)
+        np.savetxt(csv_file_path, np.transpose([xvals, yvals]), delimiter=',', header='Freq, Amplitude',
                     comments='', fmt='%f')
         list1 = [pkpow, pkwl]
         list1.extend(smsr)
         data_to_save_np = np.array(list1).reshape(1, -1)
-        speparamfile_name = f'{data_file_name}_pkpow_pkwl_smsr_{timestamp}.csv'
-        speparamfile_path = os.path.join(data_path, speparamfile_name)
-        np.savetxt(speparamfile_path, data_to_save_np, delimiter=',',
+        param_file_name = f'{common_prefix}_pkpow_pkwl_smsr_{common_suffix}.csv'
+        param_file_path = os.path.join(data_path, param_file_name)
+        np.savetxt(param_file_path, data_to_save_np, delimiter=',',
                     header='pkpow, pkwl, wl1, pow1, wl2, pow2, dwl, smsr ',
                     comments='', fmt='%f')
-        plt.savefig(file_path)
+        plt.savefig(image_file_path)
 
         print("\n--- Cleaning Up ---")
         smu.set_current(2, 0.08)
