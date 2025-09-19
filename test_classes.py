@@ -651,9 +651,9 @@ class Spectrum(Base):
             Does not save sweep data if OSA is not connected or is busy
         """
         common_prefix = f"{device_id}_" if device_id else ""
-        ld_bias = spectrum_params["smu_channel2_source"]
-        common_suffix = f"Spectrum_LDBias({ld_bias})mA_{temperature}°C_{timestamp}"
-        plot_file_name = f"{common_prefix}_{common_suffix}"
+        ld_bias = self.params_laser["smu_channel2_source"]
+        common_suffix = f"LDBias({ld_bias})mA_{temperature}°C_{timestamp}"
+        plot_file_name = f"{common_prefix}_Spectrum_{common_suffix}"
 
         if not osa.connected:
             print("OSA Not Connected Error")
