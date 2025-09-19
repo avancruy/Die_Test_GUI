@@ -201,10 +201,11 @@ class PulsedGuiApp:
         print(f"Data Path: {self.path_var.get()}")
 
         # Run the test in a separate thread
-        test_thread = threading.Thread(target=self.execute_test_and_reenable_button,
-                                       args=(device_id, temperature, timestamp))
-        test_thread.daemon = True
-        test_thread.start()
+        # test_thread = threading.Thread(target=self.execute_test_and_reenable_button,
+        #                                args=(device_id, temperature, timestamp))
+        # test_thread.daemon = True
+        # test_thread.start
+        self.execute_test_and_reenable_button(device_id, temperature, timestamp)
 
     def execute_test_and_reenable_button(self, device_id, temperature, timestamp):
         try:
@@ -215,6 +216,8 @@ class PulsedGuiApp:
             # Auto-plot if enabled
             if self.graph_panel.auto_plot_var.get() and self.curr_controller is not self.extraction_controller:
                 latest_file = self.graph_panel.find_latest_excel_file(self.path_var.get())
+                print(f"Latest file: {latest_file}")
+
                 if latest_file:
                     self.graph_panel.clear_plot()
                     self.root.after(0, lambda: self.graph_panel.excel_path_var.set(latest_file))

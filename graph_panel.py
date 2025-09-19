@@ -143,7 +143,7 @@ class GraphPanel:
             y2_label = 'EAM Current (mA)'
             y2_colour = 'blue'
             title_prefix = 'Laser Characterization (EAM)'
-        elif '_55C_80mA_' in filename: # Change name of spectrum files
+        elif '_Spectrum_' in filename: # Change name of spectrum files
             x_col = 'Freq'
             y1_col = ' Amplitude'
             y2_col = None
@@ -156,7 +156,7 @@ class GraphPanel:
         else:
             messagebox.showerror("Unknown Test Type",
                                  f"Could not determine test type from filename: {filename}\n"
-                                 "Expected '_LIV_' or '_EAM_' in filename.")
+                                 "Expected '_LIV_' or '_EAM_' or '_Spectrum_' in filename.")
             return
 
         # Clear the previous plot and make axes visible
@@ -219,7 +219,8 @@ class GraphPanel:
 
             excel_files = []
             for file in os.listdir(path):
-                if file.endswith(('.xlsx', '.xls', '.csv')):
+                if file.endswith(('.xlsx', '.xls', '.csv')) and ('_LIV_' in file or '_EAM_' in file or '_Spectrum_' in file):
+                    print(file)
                     file_path = os.path.join(path, file)
                     excel_files.append((file_path, os.path.getmtime(file_path)))
 

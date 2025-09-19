@@ -6,10 +6,13 @@ import threading
 import matplotlib.pyplot as plt
 from datetime import datetime
 import os
+import pandas as pd
 import numpy as np
 import sys
+import matplotlib
 from new_KeysightB2912A import KeysightB2912A
 import pyvisa
+matplotlib.use('TkAgg')
 
 
 class Base:
@@ -541,7 +544,7 @@ class Spectrum(Base):
             "source_func1": "VOLT", "smu_channel1_source": -2, "smu_channel1_limit": 0.02,
             "source_func2": "CURR", "smu_channel2_source": 0.08, "smu_channel2_limit": 2.5,
             "centre": 1310, "span": 12, "res": 0.02, "sens": 'High1', "avg": 1, "ref_val": -20,
-            "OSA_addr": "10.20.0.199", "smu_ip_addr": "10.20.0.38"
+            "OSA_addr": "10.20.0.199", "smu_ip_addr": "10.20.0.231"
         }
 
         self.param_sets = [
@@ -550,7 +553,7 @@ class Spectrum(Base):
 
     # override of run_test function to run spectrum test
     def run_test(self, data_path="", device_id="", temperature="", timestamp=""):
-
+        from KeysightB2912A import KeysightB2912A
         #connecting to SMU1 only (both channels) for spectrum test
 
         smu = KeysightB2912A('TCPIP0::10.20.0.231::hislip0::INSTR')  # Replace with your actual IP
@@ -593,8 +596,7 @@ class Spectrum(Base):
         osa = AQ6370Controls(self.params_spectrum['OSA_addr'])
         osaBusy = threading.Event()  # OSA Busy Event
 
-        """connect_to_osa: Retrieves inputs from Excel sheet
-            and tries to connect to OSA
+        """connect_to_osa: Retrieves inputs and tries to connect to OSA
             Does not try to connect if OSA connection is busy"""
         if osaBusy.is_set():  # If OSA busy
             # write_text_box(textbox, 'OSA Busy Error')
@@ -643,33 +645,8 @@ class Spectrum(Base):
             Does not save sweep data if OSA is not connected or is busy
         """
 
-        if not osa.connected:  # OSA Not Connected
-            print("OSA Not Connected Error")
-        else:
-            if osaBusy.is_set():  # OSA busy
-                    print("OSA busy. Exiting function")
-                    sys.exit()
-
-        osaBusy.set()  # Set OSA busy event
-        (xvals, yvals) = osa.getTraceVals()  # Get trace vals (xvals, yvals)
-        osaBusy.clear()  # Clear OSA busy event
-            
         data_file_name = str(device_id) + "_" +str(temperature)+ "C" + "_" + str("80mA")
 
-        plt.show(block=False)  # Show plot window
-        csvfile_name1 = f'{data_file_name}_{timestamp}.csv'
-        csvfile_path1 = os.path.join(data_path, csvfile_name1)
-        np.savetxt(csvfile_path1, np.transpose([xvals, yvals]), delimiter=',', header='Freq, Amplitude',
-                       comments='', fmt='%f')
-
-        self.smu1.set_current(2, 0.08)
-        self.smu1.output_off(1)
-        self.smu1.output_off(2)
-
-        """
-            Opens a plot window with the OSA sweep data
-            Does not perform sweep if OSA is not connected or is busy
-            """
         if not osa.connected:
             print("OSA Not Connected Error")
             sys.exit()
@@ -685,33 +662,11 @@ class Spectrum(Base):
         ax1.set_ylabel('Amplitude (dBm)')
         ax1.set_title('Amplitude vs wavelength')
         plt.grid(True)
-        plt.show(block=False)  # Show plot window
-
-        if not osa.connected:
-            print("OSA Not Connected Error")
-            sys.exit()
-        if osaBusy.is_set():  # OSA Busy
-            print("OSA busy. Exiting function")
-            sys.exit()
-
-        osaBusy.set()  # Set OSA busy event
-        (xvals, yvals) = osa.getTraceVals()  # Get trace vals (xvals, yvals)
-        osaBusy.clear()  # Clear OSA busy event
-        fig1, ax1 = plt.subplots()  # Set up plot window
-        ax1.plot(xvals, yvals)
-        ax1.set_xlabel('Wavelength (nm)')
-        ax1.set_ylabel('Amplitude (dBm)')
-        ax1.set_title('Amplitude vs wavelength')
-        plt.grid(True)
-
-
-        plt.show(block=False)  # Show plot window
 
         file_name = f'{data_file_name}_{timestamp}.jpg'
         file_path = os.path.join(data_path, file_name)
 
-        plt.show(block=False)  # Show plot window
-        csvfile_name = f'{data_file_name}_{timestamp}.csv'
+        csvfile_name = f'{data_file_name}_Spectrum_{timestamp}.csv'
         csvfile_path = os.path.join(data_path, csvfile_name)
         np.savetxt(csvfile_path, np.transpose([xvals, yvals]), delimiter=',', header='Freq, Amplitude',
                     comments='', fmt='%f')
@@ -724,6 +679,11 @@ class Spectrum(Base):
                     header='pkpow, pkwl, wl1, pow1, wl2, pow2, dwl, smsr ',
                     comments='', fmt='%f')
         plt.savefig(file_path)
+
+        print("\n--- Cleaning Up ---")
+        smu.set_current(2, 0.08)
+        smu.output_off(1)
+        smu.output_off(2)
 
 
 
