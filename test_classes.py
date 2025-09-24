@@ -554,23 +554,28 @@ class Spectrum(Base):
 
         self.param_sets = [
             ("Laser (SMU1 Ch2)", self.PARAM_LASER_METADATA, self.params_laser, '#fff2e8'),
-            ("Spectrum (OSA)", self.PARAM_SPECTRUM_METADATA, self.params_spectrum, '#CBC3E3'),
+            ("Spectrum (OSA)", self.PARAM_SPECTRUM_METADATA, self.params_spectrum, '#cbc3e3'),
         ]
 
     # override of run_test function to run spectrum test
     def run_test(self, data_path="", device_id="", temperature="", timestamp=""):
-        from KeysightB2912A import KeysightB2912A
+        #from KeysightB2912A import KeysightB2912A
+
         #connecting to SMU1 only (both channels) for spectrum test
+        smu = KeysightB2912A(f'TCPIP0::{self.params_spectrum['smu_ip_addr']}::hislip0::INSTR')  # Replace with your actual IP
+        #smu.get_idn()
+        smu.reset()
 
-        smu = KeysightB2912A('TCPIP0::10.20.0.231::hislip0::INSTR')  # Replace with your actual IP
-        smu.get_idn()
-
-        smu.set_mode(1, self.params_laser['source_func1'])
+        # Setting SMU channel 1
+        #smu.set_mode(1, self.params_laser['source_func1'])
+        smu.set_source_mode(1, self.params_laser['source_func1'])
         if self.params_laser['source_func1'] == 'CURR':
             smu.set_current(1, self.params_laser['smu_channel1_source'])
+            smu.set_voltage_compliance(1, self.params_laser['smu_channel1_limit'])
         #the else condition is what should always occur when running spectrum test, so why is there a condition at all? -Matthew
         else:
             smu.set_voltage(1, self.params_laser['smu_channel1_source'])
+            smu.set_current_compliance(1, self.params_laser['smu_channel1_limit'])
         # smu.set_current_limit(data[1][2])
         smu.set_autorange(1)
         smu.output_on(1)
@@ -580,11 +585,14 @@ class Spectrum(Base):
             out1 = smu.read_current(1)
         print(f"Applied {self.params_laser['source_func1']}: {self.params_laser['smu_channel1_source']}, Measured: {out1}V")
 
-        smu.set_mode(2, self.params_laser['source_func2'])
+        # Setting SMU Channel 2
+        smu.set_source_mode(2, self.params_laser['source_func2'])
         if self.params_laser['source_func2'] == 'CURR':
             smu.set_current(2, self.params_laser['smu_channel2_source'])
+            smu.set_voltage_compliance(2, self.params_laser['smu_channel2_limit'])
         else:
             smu.set_voltage(2, self.params_laser['smu_channel2_source'])
+            smu.set_current_compliance(2, self.params_laser['smu_channel2_limit'])
         # smu.set_current_limit(data[1][2])
         smu.set_autorange(2)
         smu.output_on(2)
@@ -594,16 +602,15 @@ class Spectrum(Base):
             out2 = smu.read_current(2)
         print(f"Applied {self.params_laser['source_func2']}: {self.params_laser['smu_channel2_source']}, Measured Current: {out2}A")
 
-
-        current_timestamp = timestamp or datetime.now().strftime("%Y%m%dT%H%M%S")
-
         #library for optical spectrum analyzer
         from AQ6370Controls import AQ6370Controls
         osa = AQ6370Controls(self.params_spectrum['osa_addr'])
         osaBusy = threading.Event()  # OSA Busy Event
 
-        """connect_to_osa: Retrieves inputs and tries to connect to OSA
-            Does not try to connect if OSA connection is busy"""
+        """
+        Connect to OSA: Retrieves inputs and tries to connect to OSA
+        Does not try to connect if OSA connection is busy
+        """
         if osaBusy.is_set():  # If OSA busy
             # write_text_box(textbox, 'OSA Busy Error')
             print("OSA Busy Error")
@@ -627,13 +634,12 @@ class Spectrum(Base):
         finally:
             osaBusy.clear()  # Clear event
 
-        center = osa.setCenter(self.params_spectrum['centre'])  # '1310'
-        span = osa.setSpan(self.params_spectrum['span'])  # '10'
-        resolution = osa.setResolution(self.params_spectrum['res'])  # '0.02'
-        sensitivity = osa.setSensitivity(self.params_spectrum['sens'])  # 'High1'
-        average = osa.setAvg(self.params_spectrum['avg'])
-        reference_value = osa.setRefValue(self.params_spectrum['ref_val'])
-
+        osa.setCenter(self.params_spectrum['centre'])  # '1310'
+        osa.setSpan(self.params_spectrum['span'])  # '10'
+        osa.setResolution(self.params_spectrum['res'])  # '0.02'
+        osa.setSensitivity(self.params_spectrum['sens'])  # 'High1'
+        osa.setAvg(self.params_spectrum['avg'])
+        osa.setRefValue(self.params_spectrum['ref_val'])
 
         print("Performing Sweep...")
 
@@ -641,26 +647,25 @@ class Spectrum(Base):
         pkpow = round(osa.getPeakPower(), 3)
         pkwl = round(osa.getPeakWavelength(), 3)
         smsr = [round(item * 1e9, 3) if item > 0 and item < 1e-5 else item for item in osa.getSMSR()]
-        print(
-            f'Peak Power: {round(osa.getPeakPower(), 3)} dBm\nPeak Wavelength: {round(osa.getPeakWavelength(), 3)} nm\nSMSR: {[round(item * 1e9, 3) if item > 0 and item < 1e-5 else item for item in osa.getSMSR()]} dB')
+
+        print(f'Peak Power: {pkpow} dBm')
+        print(f'Peak Wavelength: {pkwl} nm')
+        print(f'SMSR: {smsr} dB')
 
         osaBusy.clear()  # Clear OSA busy event
-        timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
 
-        """Saves sweep data in Excel sheet
-            Does not save sweep data if OSA is not connected or is busy
+        """ 
+        Saves sweep data in Excel sheet
+        Does not save sweep data if OSA is not connected or is busy
         """
-        common_prefix = f"{device_id}_" if device_id else ""
-        ld_bias = self.params_laser["smu_channel2_source"]
-        common_suffix = f"LDBias({ld_bias})mA_{temperature}°C_{timestamp}"
-        plot_file_name = f"{common_prefix}_Spectrum_{common_suffix}"
-
         if not osa.connected:
             print("OSA Not Connected Error")
             sys.exit()
         if osaBusy.is_set():  # OSA Busy
             print("OSA busy. Exiting function")
             sys.exit()
+
+        # Create plot
         osaBusy.set()  # Set OSA busy event
         (xvals, yvals) = osa.getTraceVals()  # Get trace vals (xvals, yvals)
         osaBusy.clear()  # Clear OSA busy event
@@ -671,6 +676,12 @@ class Spectrum(Base):
         ax1.set_title('Amplitude vs wavelength')
         plt.grid(True)
 
+        # Create files
+        common_prefix = f"{device_id}_" if device_id else ""
+        ld_bias = self.params_laser["smu_channel2_source"]
+        common_suffix = f"LDBias({ld_bias})mA_{temperature}°C_{timestamp}"
+        plot_file_name = f"{common_prefix}_Spectrum_{common_suffix}"
+
         image_file_name = f'{plot_file_name}.jpg'
         image_file_path = os.path.join(data_path, image_file_name)
 
@@ -678,6 +689,7 @@ class Spectrum(Base):
         csv_file_path = os.path.join(data_path, csv_file_name)
         np.savetxt(csv_file_path, np.transpose([xvals, yvals]), delimiter=',', header='Freq, Amplitude',
                     comments='', fmt='%f')
+
         list1 = [pkpow, pkwl]
         list1.extend(smsr)
         data_to_save_np = np.array(list1).reshape(1, -1)
@@ -689,12 +701,20 @@ class Spectrum(Base):
         plt.savefig(image_file_path)
 
         print("\n--- Cleaning Up ---")
-        smu.set_current(2, 0.08)
-        smu.output_off(1)
-        smu.output_off(2)
+        if smu and smu.instrument:
+            # Turn off outputs first
+            smu.output_off(1)
+            smu.output_off(2)
+            print("SMU1 outputs off.")
 
+            # Set channel 1 (PD) to -1V bias with 50mA compliance
+            smu.set_source_mode(1, 'VOLT')
+            smu.set_voltage(1, -1.0)
+            smu.set_current_compliance(1, 0.05)  # 50mA in Amps
+            print("SMU1 Channel 1 set to -1V bias with 50mA compliance.")
 
-
-
-
-
+            # Set channel 2 (Laser) to 80mA bias with 2V compliance
+            smu.set_source_mode(2, 'CURR')
+            smu.set_current(2, 0.08)  # 80mA in Amps
+            smu.set_voltage_compliance(2, 2.0)  # 2V compliance
+            print("SMU1 Channel 2 set to 80mA bias with 2V compliance.")

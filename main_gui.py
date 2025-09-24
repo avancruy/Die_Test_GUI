@@ -147,6 +147,7 @@ class PulsedGuiApp:
         """Update the status display with a message and color"""
         self.status_var.set(message)
         self.status_label.configure(fg=color)
+        print("Status: " + self.status_var.get())
 
     def run_test_threaded(self):
         device_id = None
@@ -172,7 +173,7 @@ class PulsedGuiApp:
             return
 
         self.update_status(f"Running {self.curr_controller.name} test...", "#4682b4")
-        print(self.status_var.get())
+
         device_id = self.device_entry.get()
         if device_id == "e.g., AA1234":  # Accommodate placeholder
             device_id = ""
@@ -260,4 +261,3 @@ try:
     root.mainloop()
 except ImportError:
     print("Error: 'test_classes.py' not found")
-

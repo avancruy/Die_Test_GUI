@@ -319,7 +319,7 @@ class Extraction(Base):
 
         # Get chip names
         for filename in os.listdir(input_dir):
-            if filename.endswith(".xlsx") and "_EAM_" in filename and not filename.startswith('~'):
+            if filename.endswith(".xlsx") and "_LIV_" in filename and not filename.startswith('~'):
                 try:
                     match = re.search(r'[A-Za-z]{2}\d{4}', filename)
                     if match:
@@ -330,8 +330,8 @@ class Extraction(Base):
                     continue
 
         chip_found = False
-        spectrum_data = [[], [], [], [], [],
-                         [], [], [], []]
+        spectrum_data = [ [], [], [], [], [],
+                         [], [], [], [] ]
 
         for chip_name in chip_names:
             spectrum_data[0].append(chip_name)
@@ -351,6 +351,25 @@ class Extraction(Base):
                     spectrum_data[i].append(None)
             else:
                 chip_found = False
+
+        #Find chips without LIV/EAM Data
+        for filename in os.listdir(input_dir):
+            if filename.endswith(".csv") and required_string in filename:
+                chip_name = None
+                try:
+                    match = re.search(r'[A-Za-z]{2}\d{4}', filename)
+                    if match:
+                        chip_name = match.group()
+                except Exception as e:
+                    print(f"Error extracting chip name from {filename}: {e}")
+                    continue
+
+                if chip_name not in chip_names:
+                    spectrum_data[0].append(f"NO LIV: {chip_name}")
+                    df = pd.read_csv(os.path.join(input_dir, filename))
+                    for i in range(1, 9):
+                        spectrum_data[i].append(df.iat[0, i - 1])
+
 
         results_df = pd.DataFrame({
             "Chip Name": spectrum_data[0],

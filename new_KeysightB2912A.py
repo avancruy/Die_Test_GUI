@@ -102,6 +102,12 @@ class KeysightB2912A:
     def output_off(self, channel):
         self.write(f':OUTP{channel} OFF')
 
+    def set_autorange(self, channel=1, on_off=1):
+        """
+        Set instrument autorange on (1), off(0).
+        """
+        self.instrument.write(f':SENS{channel}:RANG:AUTO {on_off}')
+
     def set_nplc(self, channel, nplc_value):
         self.write(f':SENS{channel}:VOLT:NPLC {nplc_value}')
         self.write(f':SENS{channel}:CURR:NPLC {nplc_value}')
