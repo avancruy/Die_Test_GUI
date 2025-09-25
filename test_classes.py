@@ -230,16 +230,16 @@ class Base:
         finally:
             self.sync_in_progress = False
 
-    def connect_smus(self, is_liv_test):
+    def connect_smus(self, connect_eam):
         try:
             if self.smu1 is None or self.smu1.instrument is None:
                 print(f"Attempting to connect to SMU1: {self.smu_resources1_addr}")
                 self.smu1 = KeysightB2912A(self.smu_resources1_addr)
-            if (self.smu2 is None or self.smu2.instrument is None) and not is_liv_test:
+            if connect_eam and (self.smu2 is None or self.smu2.instrument is None):
                 print(f"Attempting to connect to SMU2: {self.smu_resources2_addr}")
                 self.smu2 = KeysightB2912A(self.smu_resources2_addr)
 
-            if self.smu1.instrument is None or (self.smu2.instrument is None and not is_liv_test):
+            if self.smu1.instrument is None or (connect_eam and self.smu2.instrument is None):
                 raise ConnectionError("One or both SMUs failed to connect.")
             return True
         except Exception as e:
@@ -248,53 +248,85 @@ class Base:
             self.smu2 = None
             return False
 
+    def set_smu_defaults(self):
+        print("\n--- Setting SMU to defaults ---")
+        if self.smu1 and self.smu1.instrument:
+            # Turn off outputs first
+            self.smu1.output_off(self.params_photodetector['smu_channel'])
+            self.smu1.output_off(self.params_laser['smu_channel'])
+            print("SMU1 outputs off.")
+
+            # Set channel 1 (PD) to -1V bias with 50mA compliance
+            self.smu1.set_source_mode(1, 'VOLT')
+            self.smu1.set_voltage(1, -1.0)
+            self.smu1.set_current_compliance(1, 0.05)  # 50mA in Amps
+            print("SMU1 Channel 1 set to -1V bias with 50mA compliance.")
+
+            # Set channel 2 (Laser) to 80mA bias with 2V compliance
+            self.smu1.set_source_mode(2, 'CURR')
+            self.smu1.set_current(2, 0.08)  # 80mA in Amps
+            self.smu1.set_voltage_compliance(2, 2.0)  # 2V compliance
+            print("SMU1 Channel 2 set to 80mA bias with 2V compliance.")
+
+        if self.smu2 and self.smu2.instrument:
+            self.smu2.output_off(self.params_eam['smu_channel'])
+            print("SMU2 outputs off.")
+
+            # Set channel 3 (EAM) to -2. bias with 80mA compliance
+            self.smu2.set_source_mode(1, 'VOLT')
+            self.smu2.set_voltage(1, -2.0)
+            self.smu2.set_current_compliance(1, 0.08)  # 80mA in Amps
+            print("SMU2 Channel 1 set to -2V bias with 80mA compliance.")
+
     def run_test(self, data_path="", device_id="", temperature="", timestamp=""):
-        settle_time = 0.5
-
-        current_timestamp = timestamp or datetime.now().strftime("%Y%m%dT%H%M%S")
-
-        if self.params_laser['source_mode'].lower() == 'swe' and self.params_laser['start'] != self.params_laser[
-            'stop']:
-            is_liv_test = True
-            print("Running LIV Test (Laser sweep)")
-            num_measurement_points = self.params_laser['num_points']
-            active_trigger_period = self.params_laser['trigger_period']
-        elif self.params_eam['source_mode'].lower() == 'swe' and self.params_eam['start'] != self.params_eam[
-            'stop']:
-            is_liv_test = False
-            print("Running EAM Test (EAM sweep)")
-            num_measurement_points = self.params_eam['num_points']
-            active_trigger_period = self.params_eam['trigger_period']
-        else:
-            print("Warning: Neither Laser nor EAM is in sweep mode. Defaulting to EAM num_points for timing.")
-            is_liv_test = False
-            num_measurement_points = self.params_eam['num_points']
-            active_trigger_period = self.params_eam['trigger_period']
-
-        if not self.connect_smus(is_liv_test):
-            print("SMU connection failed. Aborting test.")
-            return
-
         try:
+            current_timestamp = timestamp or datetime.now().strftime("%Y%m%dT%H%M%S")
+
+            if self.params_laser['source_mode'].lower() == 'swe' and self.params_laser['start'] != self.params_laser[
+                'stop']:
+                is_eam = False
+                print("Running LIV Test (Laser sweep)")
+                num_measurement_points = self.params_laser['num_points']
+                active_trigger_period = self.params_laser['trigger_period']
+            elif self.params_eam and self.params_eam['source_mode'].lower() == 'swe' and self.params_eam['start'] != self.params_eam[
+                'stop']:
+                is_eam = True
+                print("Running EAM Test (EAM sweep)")
+                num_measurement_points = self.params_eam['num_points']
+                active_trigger_period = self.params_eam['trigger_period']
+            else:
+                print("Warning: Neither Laser nor EAM is in sweep mode. Defaulting to EAM num_points for timing.")
+                is_eam = True
+                num_measurement_points = self.params_eam['num_points']
+                active_trigger_period = self.params_eam['trigger_period']
+
+            if not self.connect_smus(is_eam):
+                print("SMU connection failed. Aborting test.")
+                return
+
             print("\n--- Initializing SMU1 ---")
             self.smu1.reset()
-            if not is_liv_test:
+            if is_eam:
                 print("\n--- Initializing SMU2 ---")
                 self.smu2.reset()
-            time.sleep(settle_time)
+
+            time.sleep(0.5) #settle time
 
             self.smu1.config_pulsed_params(self.params_photodetector)
             self.smu1.config_pulsed_params(self.params_laser)
-            self.smu2.config_pulsed_params(self.params_eam)
+            if is_eam:
+                self.smu2.config_pulsed_params(self.params_eam)
 
             print("\nTurning on outputs and initiating measurement...")
             self.smu1.output_on(self.params_photodetector['smu_channel'])
             self.smu1.output_on(self.params_laser['smu_channel'])
-            if not is_liv_test: self.smu2.output_on(self.params_eam['smu_channel'])
+            if is_eam:
+                self.smu2.output_on(self.params_eam['smu_channel'])
             time.sleep(0.1)
 
             self.smu1.write(f":init (@{self.params_photodetector['smu_channel']},{self.params_laser['smu_channel']})")
-            if not is_liv_test: self.smu2.write(f":init (@{self.params_eam['smu_channel']})")
+            if is_eam:
+                self.smu2.write(f":init (@{self.params_eam['smu_channel']})")
             print("Measurement initiated. Waiting for completion...")
 
             total_meas_time = num_measurement_points * active_trigger_period + 2
@@ -309,12 +341,14 @@ class Base:
             laser_voltage_data = self.smu1.query(f":fetc:arr:volt? (@{self.params_laser['smu_channel']})")
             photodetector_current_data = self.smu1.query(
                 f":fetc:arr:curr? (@{self.params_photodetector['smu_channel']})")
-
-            eam_current_data = self.smu2.query(f":fetc:arr:curr? (@{self.params_eam['smu_channel']})") if not is_liv_test else None
+            eam_current_data = None
+            if is_eam:
+                eam_current_data = self.smu2.query(f":fetc:arr:curr? (@{self.params_eam['smu_channel']})")
 
             print(f"  Laser Fetched (V): {laser_voltage_data[:50]}...")
             print(f"  Detector Fetched (I): {photodetector_current_data[:50]}...")
-            if not is_liv_test: print(f"  EAM Fetched (I): {eam_current_data[:50]}...")
+            if is_eam:
+                print(f"  EAM Fetched (I): {eam_current_data[:50]}...")
 
             success = create_combined_excel_file(
                 laser_voltage_data,
@@ -324,7 +358,7 @@ class Base:
                 self.params_photodetector,
                 self.params_laser,
                 self.params_eam,
-                is_liv_test,
+                is_eam,
                 device_id,
                 temperature,
                 data_path
@@ -347,34 +381,7 @@ class Base:
             traceback.print_exc()
         finally:
             # ✨ Modified cleanup procedure
-            print("\n--- Cleaning Up ---")
-            if self.smu1 and self.smu1.instrument:
-                # Turn off outputs first
-                self.smu1.output_off(self.params_photodetector['smu_channel'])
-                self.smu1.output_off(self.params_laser['smu_channel'])
-                print("SMU1 outputs off.")
-
-                # Set channel 1 (PD) to -1V bias with 50mA compliance
-                self.smu1.set_source_mode(1, 'VOLT')
-                self.smu1.set_voltage(1, -1.0)
-                self.smu1.set_current_compliance(1, 0.05)  # 50mA in Amps
-                print("SMU1 Channel 1 set to -1V bias with 50mA compliance.")
-
-                # Set channel 2 (Laser) to 80mA bias with 2V compliance
-                self.smu1.set_source_mode(2, 'CURR')
-                self.smu1.set_current(2, 0.08)  # 80mA in Amps
-                self.smu1.set_voltage_compliance(2, 2.0)  # 2V compliance
-                print("SMU1 Channel 2 set to 80mA bias with 2V compliance.")
-
-            if self.smu2 and self.smu2.instrument and not is_liv_test:
-                self.smu2.output_off(self.params_eam['smu_channel'])
-                print("SMU2 outputs off.")
-
-                # Set channel 3 (EAM) to -2. bias with 80mA compliance
-                self.smu2.set_source_mode(1, 'VOLT')
-                self.smu2.set_voltage(1, -2.0)
-                self.smu2.set_current_compliance(1, 0.08)  # 80mA in Amps
-                print("SMU2 Channel 1 set to -2V bias with 80mA compliance.")
+            self.set_smu_defaults()
 
     def close_smus(self):
         if self.smu1:
@@ -498,19 +505,9 @@ class LIV(Base):
             "trigger_transition_delay": 1.5e-3, "trigger_acquisition_delay": 2.9e-3
         }
 
-        self.params_eam = {  # SMU2 chan1
-            "smu_channel": 1, "source_func": "volt", "source_shape": "dc", "source_mode": "fix",
-            "start": 0, "stop": 0, "num_points": 21, "initval": 0,  # Updated from 0.0 to -1.0
-            "pulse_delay": 0.5e-3, "pulse_width": 200.0e-3,  # 50% duty cycle
-            "sense_func": "curr", "sense_range": 100, "aperture": 5e-3,  # Updated aperture from 0.5e-3 to 5e-3
-            "protection": 80, "trigger_period": 400e-3,  # 400ms period
-            "trigger_transition_delay": 1.5e-3, "trigger_acquisition_delay": 2.9e-3
-        }
-
         self.param_sets = [
             ("Photodetector (SMU1 Ch1)", self.PARAM_METADATA, self.params_photodetector, '#e8f4fd'),
-            ("Laser (SMU1 Ch2)", self.PARAM_METADATA, self.params_laser, '#fff2e8'),
-            ("EAM (SMU2 Ch1)", self.PARAM_METADATA, self.params_eam, '#f0f8e8')
+            ("Laser (SMU1 Ch2)", self.PARAM_METADATA, self.params_laser, '#fff2e8')
         ]
 
 class Spectrum(Base):
@@ -564,7 +561,7 @@ class Spectrum(Base):
         #from KeysightB2912A import KeysightB2912A
 
         #connecting to SMU1 only (both channels) for spectrum test
-        smu = KeysightB2912A(f'TCPIP0::{self.params_spectrum['smu_ip_addr']}::hislip0::INSTR')  # Replace with your actual IP
+        smu = KeysightB2912A('TCPIP0::'+self.params_laser['smu_ip_addr']+'::hislip0::INSTR')  # Replace with your actual IP
         #smu.get_idn()
         smu.reset()
 

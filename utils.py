@@ -32,7 +32,7 @@ def parse_measurement_data(data_string):
 # ✨ Modified function to multiply PD current by 1.69
 def create_combined_excel_file(laser_data, detector_data, eam_data, timestamp,
                                detector_params, laser_params, eam_params,
-                               test_checker, device_id, temperature, base_path_config):
+                               is_eam, device_id, temperature, base_path_config):
     try:
         laser_voltages_fetched = parse_measurement_data(laser_data)
         detector_currents_fetched = parse_measurement_data(detector_data)
@@ -98,7 +98,7 @@ def create_combined_excel_file(laser_data, detector_data, eam_data, timestamp,
 
         common_suffix = f"NumPoints{num_points_sweep}_DtyC{duty_cycle:.2f}%_{temp_suffix}°C_{timestamp}.xlsx"
 
-        if test_checker:
+        if not is_eam:
             ld_start_mA = int(laser_params['start'])
             ld_stop_mA = int(laser_params['stop'])
             eam_bias_V = eam_params['initval']
