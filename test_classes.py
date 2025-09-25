@@ -513,19 +513,15 @@ class LIV(Base):
 class Spectrum(Base):
     def __init__(self, smu_resources):
         super().__init__()
-        #self.smu_resources1_addr = smu_resources['smu1']
-        self.smu_resources2_addr = smu_resources['smu2']
-        #self.smu1 = None
+
+        self.smu_resources2_addr = smu_resources['smu2'] #SMU1 channel 2
+
         self.smu2 = None
 
         self.name = "Spectrum"
 
         self.PARAM_LASER_METADATA = {
             "smu_ip_addr": ("SMU IP Address", str, None),
-            # "source_func1": ("Channel 1 Mode", str, [("Voltage(V)", "VOLT"), ("Current(A)", "CURR")]),
-            # "smu_channel1_source": ("Channel 1 Source (A)", float, None),
-            # "smu_channel1_limit": ("Channel 1 limit", float, None),
-
             "source_func2": ("Channel 2 Mode", str, [("Voltage(V)", "VOLT"), ("Current(A)", "CURR")]),
             "smu_channel2_source": ("Channel 2 Value", float, None),
             "smu_channel2_limit": ("Channel 2 limit", float, None)
@@ -542,8 +538,8 @@ class Spectrum(Base):
         }
 
         self.params_laser = {
-            "smu_ip_addr": "10.20.0.231", #"source_func1": "VOLT", "smu_channel1_source": -2, "smu_channel1_limit": 0.02,
-            "source_func2": "CURR", "smu_channel2_source": 0.08, "smu_channel2_limit": 2.5
+            "smu_ip_addr": "10.20.0.231", "source_func2": "CURR",
+            "smu_channel2_source": 0.08, "smu_channel2_limit": 2.5
         }
 
         self.params_spectrum = {
@@ -558,31 +554,12 @@ class Spectrum(Base):
 
     # override of run_test function to run spectrum test
     def run_test(self, data_path="", device_id="", temperature="", timestamp=""):
-        #from KeysightB2912A import KeysightB2912A
 
-        #connecting to SMU1 only (both channels) for spectrum test
+
+        #connecting to SMU1 channel 2 for spectrum test
         smu = KeysightB2912A('TCPIP0::'+self.params_laser['smu_ip_addr']+'::hislip0::INSTR')  # Replace with your actual IP
         #smu.get_idn()
         smu.reset()
-
-        # # Setting SMU channel 1
-        # #smu.set_mode(1, self.params_laser['source_func1'])
-        # smu.set_source_mode(1, self.params_laser['source_func1'])
-        # if self.params_laser['source_func1'] == 'CURR':
-        #     smu.set_current(1, self.params_laser['smu_channel1_source'])
-        #     smu.set_voltage_compliance(1, self.params_laser['smu_channel1_limit'])
-        # #the else condition is what should always occur when running spectrum test, so why is there a condition at all? -Matthew
-        # else:
-        #     smu.set_voltage(1, self.params_laser['smu_channel1_source'])
-        #     smu.set_current_compliance(1, self.params_laser['smu_channel1_limit'])
-        # # smu.set_current_limit(data[1][2])
-        # smu.set_autorange(1)
-        # #smu.output_on(1) #photodiode is not needed for spectrum test
-        # if self.params_laser['source_func1'] == 'CURR':
-        #     out1 = smu.read_voltage(1)
-        # else:
-        #     out1 = smu.read_current(1)
-        # print(f"Applied {self.params_laser['source_func1']}: {self.params_laser['smu_channel1_source']}, Measured: {out1}V")
 
         # Setting SMU Channel 2
         smu.set_source_mode(2, self.params_laser['source_func2'])
@@ -703,18 +680,7 @@ class Spectrum(Base):
         print("\n--- Cleaning Up ---")
         if smu and smu.instrument:
             # Turn off outputs first
-            #smu.output_off(1)
             smu.output_off(2)
             print("SMU1 outputs off.")
 
-            # # Set channel 1 (PD) to -1V bias with 50mA compliance
-            # smu.set_source_mode(1, 'VOLT')
-            # smu.set_voltage(1, -1.0)
-            # smu.set_current_compliance(1, 0.05)  # 50mA in Amps
-            # print("SMU1 Channel 1 set to -1V bias with 50mA compliance.")
-
-            # Set channel 2 (Laser) to 80mA bias with 2V compliance
-            smu.set_source_mode(2, 'CURR')
-            smu.set_current(2, 0.08)  # 80mA in Amps
-            smu.set_voltage_compliance(2, 2.0)  # 2V compliance
-            print("SMU1 Channel 2 set to 80mA bias with 2V compliance.")
+            self.set_smu_defaults()
