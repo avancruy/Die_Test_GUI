@@ -20,13 +20,9 @@ class PulsedGuiApp:
         # Set minimum window size - even wider to accommodate graph
         self.root.minsize(1800, 800)
 
-        smu_resources = {
-            'smu1': 'TCPIP0::10.20.0.231::hislip0::INSTR',  # Replace with actual VISA address
-            'smu2': 'TCPIP0::10.20.0.230::inst0::INSTR'  # Replace with actual VISA address
-        }
-        self.liv_controller = LIV(smu_resources)
-        self.eam_controller = EAM(smu_resources)
-        self.spectrum_controller = Spectrum(smu_resources)
+        self.liv_controller = LIV()
+        self.eam_controller = EAM()
+        self.spectrum_controller = Spectrum()
         self.extraction_controller = Extraction()
         self.curr_controller = self.liv_controller
         self.sync_in_progress = False  # Flag to prevent infinite sync loops
@@ -191,7 +187,7 @@ class PulsedGuiApp:
             temperature = str(temp_val)
 
         timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
-        time = f"{timestamp[4:6]}/{timestamp[6:8]}/{timestamp[:4]}, {timestamp[9:11]}:{timestamp[11:13]}:{timestamp[13:15]}0"
+        time = f"{timestamp[4:6]}/{timestamp[6:8]}/{timestamp[:4]}, {timestamp[9:11]}:{timestamp[11:13]}:{timestamp[13:15]}"
         print(f"Running {self.curr_controller.name} test for: '{device_id}' at {time} with Temp: '{temperature}°C'")
         if self.curr_controller.name == "LIV" or self.curr_controller.name == "EAM":
             print(f"Photodetector Params: {self.curr_controller.params_photodetector}")

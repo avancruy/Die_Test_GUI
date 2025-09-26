@@ -17,8 +17,6 @@ matplotlib.use('TkAgg')
 
 class Base:
     def __init__(self):
-        self.smu_resources1_addr = None
-        self.smu_resources2_addr = None
         self.smu1 = None
         self.smu2 = None
 
@@ -233,11 +231,11 @@ class Base:
     def connect_smus(self, connect_eam):
         try:
             if self.smu1 is None or self.smu1.instrument is None:
-                print(f"Attempting to connect to SMU1: {self.smu_resources1_addr}")
-                self.smu1 = KeysightB2912A(self.smu_resources1_addr)
+                print(f"Attempting to connect to SMU1: {self.params_laser["smu_ip"]}")
+                self.smu1 = KeysightB2912A('TCPIP0::'+self.params_laser["smu_ip"]+'::hislip0::INSTR')
             if connect_eam and (self.smu2 is None or self.smu2.instrument is None):
-                print(f"Attempting to connect to SMU2: {self.smu_resources2_addr}")
-                self.smu2 = KeysightB2912A(self.smu_resources2_addr)
+                print(f"Attempting to connect to SMU2: {self.params_eam["smu_ip"]}")
+                self.smu2 = KeysightB2912A('TCPIP0::'+self.params_eam["smu_ip"]+'::hislip0::INSTR')
 
             if self.smu1.instrument is None or (connect_eam and self.smu2.instrument is None):
                 raise ConnectionError("One or both SMUs failed to connect.")
@@ -393,10 +391,8 @@ class Base:
         print("SMU connections closed.")
 
 class EAM(Base):
-    def __init__(self, smu_resources):
+    def __init__(self):
         super().__init__()
-        self.smu_resources1_addr = smu_resources['smu1']
-        self.smu_resources2_addr = smu_resources['smu2']
         self.smu1 = None
         self.smu2 = None
 
@@ -422,6 +418,10 @@ class EAM(Base):
             "trigger_acquisition_delay": ("Trigger Acquisition Delay (s)", float, None)
         }
 
+        self.PARAM_LD_METADATA = {"smu_ip": ("SMU IP Address", str, None), **self.PARAM_METADATA}
+
+        self.PARAM_EAM_METADATA = {"smu_ip": ("SMU IP Address", str, None), **self.PARAM_METADATA}
+
         # Default parameters - these will be updated by the GUI
         self.params_photodetector = {  # SMU1 chan1
             "smu_channel": 1, "source_func": "volt", "source_shape": "dc", "source_mode": "swe",
@@ -433,7 +433,7 @@ class EAM(Base):
         }
 
         self.params_laser = {  # SMU1 chan2
-            "smu_channel": 2, "source_func": "curr", "source_shape": "puls", "source_mode": "swe",
+            "smu_ip": "10.0.20.231", "smu_channel": 2, "source_func": "curr", "source_shape": "puls", "source_mode": "swe",
             "start": 80, "stop": 80, "num_points": 32, "initval": 80,
             "pulse_delay": 0.5e-3, "pulse_width": 200.0e-3,  # 50% duty cycle
             "sense_func": "volt", "sense_range": 2.0, "aperture": 5e-3,  # Updated aperture from 0.5e-3 to 5e-3
@@ -442,7 +442,7 @@ class EAM(Base):
         }
 
         self.params_eam = {  # SMU2 chan1
-            "smu_channel": 1, "source_func": "volt", "source_shape": "dc", "source_mode": "swe",
+            "smu_ip": "10.20.0.230", "smu_channel": 1, "source_func": "volt", "source_shape": "dc", "source_mode": "swe",
             "start": -2.5833, "stop": 0, "num_points": 32, "initval": -2.5833,  # Updated from 0.0 to -1.0
             "pulse_delay": 0.5e-3, "pulse_width": 200.0e-3,  # 50% duty cycle
             "sense_func": "curr", "sense_range": 100, "aperture": 5e-3,  # Updated aperture from 0.5e-3 to 5e-3
@@ -452,15 +452,13 @@ class EAM(Base):
 
         self.param_sets = [
             ("Photodetector (SMU1 Ch1)", self.PARAM_METADATA, self.params_photodetector, '#e8f4fd'),
-            ("Laser (SMU1 Ch2)", self.PARAM_METADATA, self.params_laser, '#fff2e8'),
-            ("EAM (SMU2 Ch1)", self.PARAM_METADATA, self.params_eam, '#f0f8e8')
+            ("Laser (SMU1 Ch2)", self.PARAM_LD_METADATA, self.params_laser, '#fff2e8'),
+            ("EAM (SMU2 Ch1)", self.PARAM_EAM_METADATA, self.params_eam, '#f0f8e8')
         ]
 
 class LIV(Base):
-    def __init__(self, smu_resources):
+    def __init__(self):
         super().__init__()
-        self.smu_resources1_addr = smu_resources['smu1']
-        self.smu_resources2_addr = smu_resources['smu2']
         self.smu1 = None
         self.smu2 = None
 
@@ -486,6 +484,8 @@ class LIV(Base):
             "trigger_acquisition_delay": ("Trigger Acquisition Delay (s)", float, None)
         }
 
+        self.PARAM_LD_METADATA = {"smu_ip": ("SMU IP Address", str, None), **self.PARAM_METADATA}
+
         # Default parameters - these will be updated by the GUI
         self.params_photodetector = {  # SMU1 chan1
             "smu_channel": 1, "source_func": "volt", "source_shape": "dc", "source_mode": "swe",
@@ -497,7 +497,7 @@ class LIV(Base):
         }
 
         self.params_laser = {  # SMU1 chan2
-            "smu_channel": 2, "source_func": "curr", "source_shape": "puls", "source_mode": "swe",
+            "smu_ip": "10.0.20.231", "smu_channel": 2, "source_func": "curr", "source_shape": "puls", "source_mode": "swe",
             "start": 0, "stop": 100, "num_points": 21, "initval": 0,
             "pulse_delay": 0.5e-3, "pulse_width": 200.0e-3,  # 50% duty cycle
             "sense_func": "volt", "sense_range": 2.0, "aperture": 5e-3,  # Updated aperture from 0.5e-3 to 5e-3
@@ -507,28 +507,26 @@ class LIV(Base):
 
         self.param_sets = [
             ("Photodetector (SMU1 Ch1)", self.PARAM_METADATA, self.params_photodetector, '#e8f4fd'),
-            ("Laser (SMU1 Ch2)", self.PARAM_METADATA, self.params_laser, '#fff2e8')
+            ("Laser (SMU1 Ch2)", self.PARAM_LD_METADATA, self.params_laser, '#fff2e8')
         ]
 
 class Spectrum(Base):
-    def __init__(self, smu_resources):
+    def __init__(self):
         super().__init__()
-
-        self.smu_resources2_addr = smu_resources['smu2'] #SMU1 channel 2
 
         self.smu2 = None
 
         self.name = "Spectrum"
 
         self.PARAM_LASER_METADATA = {
-            "smu_ip_addr": ("SMU IP Address", str, None),
+            "smu_ip": ("SMU IP Address", str, None),
             "source_func2": ("Channel 2 Mode", str, [("Voltage(V)", "VOLT"), ("Current(A)", "CURR")]),
             "smu_channel2_source": ("Channel 2 Value", float, None),
-            "smu_channel2_limit": ("Channel 2 limit", float, None)
+            "smu_channel2_limit": ("Channel 2 Limit", float, None)
         }
 
         self.PARAM_SPECTRUM_METADATA = {
-            "osa_addr": ("OSA Address", str, None),
+            "osa_ip": ("OSA Address", str, None),
             "centre": ("Centre", float, None),
             "span": ("Span", float, None),
             "res": ("Resolution", float, None),
@@ -538,12 +536,12 @@ class Spectrum(Base):
         }
 
         self.params_laser = {
-            "smu_ip_addr": "10.20.0.231", "source_func2": "CURR",
+            "smu_ip": "10.20.0.231", "source_func2": "CURR",
             "smu_channel2_source": 0.08, "smu_channel2_limit": 2.5
         }
 
         self.params_spectrum = {
-            "osa_addr": "10.20.0.199", "centre": 1310, "span": 12,
+            "osa_ip": "10.20.0.199", "centre": 1310, "span": 12,
             "res": 0.02, "sens": 'High1', "avg": 1, "ref_val": -20
         }
 
@@ -557,7 +555,8 @@ class Spectrum(Base):
 
 
         #connecting to SMU1 channel 2 for spectrum test
-        smu = KeysightB2912A('TCPIP0::'+self.params_laser['smu_ip_addr']+'::hislip0::INSTR')  # Replace with your actual IP
+        self.connect_smus(False)
+        #smu = KeysightB2912A('TCPIP0::'+self.params_laser['smu_ip']+'::hislip0::INSTR')  # Replace with your actual IP
         #smu.get_idn()
         smu.reset()
 
@@ -581,7 +580,7 @@ class Spectrum(Base):
 
         #library for optical spectrum analyzer
         from AQ6370Controls import AQ6370Controls
-        osa = AQ6370Controls(self.params_spectrum['osa_addr'])
+        osa = AQ6370Controls(self.params_spectrum['osa_ip'])
         osaBusy = threading.Event()  # OSA Busy Event
 
         """
@@ -594,7 +593,7 @@ class Spectrum(Base):
             print("OSA busy. Exiting function")
 
         osaBusy.set()  # Set event osaBusy
-        osa.setAddress(self.params_spectrum['osa_addr'])  # connect to OSA through IP address
+        osa.setAddress(self.params_spectrum['osa_ip'])  # connect to OSA through IP address
 
         try:
             # write_text_box(textbox, 'Connecting to OSA')
