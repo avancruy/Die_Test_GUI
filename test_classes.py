@@ -31,7 +31,7 @@ class Base:
         self.param_sets = []
 
         self.param_vars = {}
-        self.sync_in_progress = False
+        self.sync_in_progress = False # Flag to prevent infinite sync loops
 
         self.SYNCHRONIZED_PARAMS = {
             "num_points", "trigger_period", "pulse_width",
@@ -49,7 +49,7 @@ class Base:
         columns_container.pack(expand=True, fill="both")
 
         # Create three columns with individual scrollbars
-        for i, (name, param_type, params_dict, bg_color) in enumerate(self.param_sets):
+        for i, (name, param_config, params_dict, bg_color) in enumerate(self.param_sets):
             # Create column frame
             column_frame = tk.Frame(columns_container, bg=bg_color, relief='solid', bd=1)
             column_frame.grid(row=0, column=i, padx=5, pady=5, sticky='nsew')
@@ -86,25 +86,25 @@ class Base:
             canvas.bind("<Leave>", lambda e, c=canvas: c.unbind_all("<MouseWheel>"))
 
             # Create parameters in the scrollable frame
-            self.create_param_entries_vertical(scrollable_frame, param_type, params_dict, name, bg_color)
+            self.create_param_entries_vertical(scrollable_frame, param_config, params_dict, name, bg_color)
 
         # Configure column weights for equal distribution
         for i in range(3):
             columns_container.columnconfigure(i, weight=1)
         columns_container.rowconfigure(0, weight=1)
 
-    def create_param_entries_vertical(self, parent, param_type_ref, params_dict_ref, param_set_name, bg_color):
+    def create_param_entries_vertical(self, parent, param_config, params_dict, param_set_name, bg_color):
         row_idx = 0
 
-        for key, (label_text, data_type, options) in param_type_ref.items():
-            if key not in params_dict_ref:
+        for key, (label_text, data_type, options) in param_config.items():
+            if key not in params_dict:
                 if key == "smu_channel":  # Show SMU channel as non-editable
                     label_frame = tk.Frame(parent, bg=bg_color)
                     label_frame.pack(fill='x', pady=1)
 
                     tk.Label(label_frame, text=f"{label_text}:", bg=bg_color,
                              font=('Arial', 8, 'bold')).pack(anchor='w')
-                    tk.Label(label_frame, text=str(params_dict_ref.get(key, "N/A")),
+                    tk.Label(label_frame, text=str(params_dict.get(key, "N/A")),
                              bg=bg_color, fg='#666666', font=('Arial', 8)).pack(anchor='w')
                 continue
 
@@ -123,7 +123,7 @@ class Base:
                                    font=('Arial', 8, 'bold'))
             param_label.pack(anchor='w')
 
-            current_value = params_dict_ref.get(key)
+            current_value = params_dict.get(key)
 
             # Create appropriate widget
             if data_type == bool:  # Checkbutton for boolean
@@ -148,7 +148,7 @@ class Base:
 
             # Store var and add trace
             self.param_vars[var_key] = var
-            var.trace_add("write", lambda *args, k=key, dt=data_type, ps_dict=params_dict_ref,
+            var.trace_add("write", lambda *args, k=key, dt=data_type, ps_dict=params_dict,
                                           v=var, opts=options, psn=param_set_name:
                 self.update_parameter(k, dt, ps_dict, v, opts, psn))
 
@@ -190,7 +190,7 @@ class Base:
                     new_value = False  # Defaulting to False if it's a boolean and empty
             if param_set_dict.get(param_key) != new_value:
                 param_set_dict[param_key] = new_value
-                print(f"Updated {param_key} in {param_set_dict.get('smu_channel', 'Unknown SMU')}: {new_value}")
+                print(f"Updated {self.name} test, {param_set_name} value: {param_key} = {new_value}")
 
                 # Synchronize parameter across all devices if it's a synchronized parameter
                 if param_key in self.SYNCHRONIZED_PARAMS:
@@ -210,7 +210,7 @@ class Base:
                 ("EAM (SMU2 Ch1)", self.params_eam)
             ]
 
-            for param_set_name, params_dict in param_sets:
+            for param_set_name, _, params_dict, _ in self.param_sets:
                 if param_set_name == source_param_set_name:
                     continue  # Skip the source parameter set
 
@@ -223,7 +223,7 @@ class Base:
                     if var_key in self.param_vars:
                         self.param_vars[var_key].set(str(new_value))
 
-            print(f"Synchronized {param_key} = {new_value} across all devices")
+            print(f"Synchronized {param_key} = {new_value} across all {self.name} devices")
 
         finally:
             self.sync_in_progress = False
@@ -280,6 +280,7 @@ class Base:
         try:
             current_timestamp = timestamp or datetime.now().strftime("%Y%m%dT%H%M%S")
 
+            # Determine test type
             if self.params_laser['source_mode'].lower() == 'swe' and self.params_laser['start'] != self.params_laser[
                 'stop']:
                 is_eam = False

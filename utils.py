@@ -98,6 +98,7 @@ def create_combined_excel_file(laser_data, detector_data, eam_data, timestamp,
 
         common_suffix = f"NumPoints{num_points_sweep}_DtyC{duty_cycle:.2f}%_{temp_suffix}°C_{timestamp}.xlsx"
 
+        # Create LIV / EAM File
         if not is_eam:
             ld_start_mA = int(laser_params['start'])
             ld_stop_mA = int(laser_params['stop'])

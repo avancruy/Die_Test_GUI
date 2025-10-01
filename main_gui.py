@@ -25,10 +25,6 @@ class PulsedGuiApp:
         self.spectrum_controller = Spectrum()
         self.extraction_controller = Extraction()
         self.curr_controller = self.liv_controller
-        self.sync_in_progress = False  # Flag to prevent infinite sync loops
-
-        # Graphing related variables
-
         self.graph_panel = None
 
         self.setup_gui()
